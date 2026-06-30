@@ -15,6 +15,7 @@ import {
   Settings,
   Repo,
   PrDetail,
+  PrMeta,
 } from '@devdigest/shared';
 
 /**
@@ -157,7 +158,7 @@ describe('AI contracts parse fixtures', () => {
   it('RunTrace (data2.jsx TRACE single-document)', () => {
     const trace = RunTrace.parse({
       config: { agent: 'Security Reviewer', version: 'v7', model: 'gpt-4.1', pr: 482, source: 'local' },
-      stats: { duration_ms: 8200, tokens_in: 14820, tokens_out: 1240, findings: 3, grounding: '3/3 passed' },
+      stats: { duration_ms: 8200, tokens_in: 14820, tokens_out: 1240, findings: 3, grounding: '3/3 passed', cost_usd: 0.06 },
       prompt_assembly: { system: 's', user: 'u' },
       tool_calls: [{ tool: 'read_file', args: "'src/config.ts'", meta: '1,240 bytes', ms: 120 }],
       raw_output: '{}',
@@ -206,5 +207,37 @@ describe('platform DTOs', () => {
         commits: [],
       }),
     ).not.toThrow();
+  });
+
+  it('PrMeta with inlined latest_findings (list popover)', () => {
+    const pr = PrMeta.parse({
+      number: 482,
+      title: 'Add rate limiting to public API endpoints',
+      author: 'marisa.koch',
+      branch: 'feat/rate-limit-public',
+      base: 'main',
+      head_sha: 'sha',
+      additions: 247,
+      deletions: 38,
+      files_count: 9,
+      status: 'needs_review',
+      score: 61,
+      findings: { CRITICAL: 2, WARNING: 2, SUGGESTION: 2 },
+      latest_findings: [
+        {
+          id: 'f1',
+          severity: 'CRITICAL',
+          category: 'security',
+          title: 'Hardcoded Stripe secret key in commit',
+          file: 'src/config.ts',
+          start_line: 12,
+          end_line: 12,
+          rationale: 'Line 12 contains a literal `sk_live_` Stripe key.',
+          confidence: 0.98,
+          kind: 'secret_leak',
+        },
+      ],
+    });
+    expect(pr.latest_findings).toHaveLength(1);
   });
 });

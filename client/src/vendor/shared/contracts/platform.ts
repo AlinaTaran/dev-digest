@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { Provider } from './knowledge.js';
+import { Finding } from './findings.js';
 
 /**
  * Platform / scaffolding DTOs owned by F1:
@@ -170,6 +171,18 @@ export const PrMeta = z.object({
   updated_at: z.string().nullish(),
   // Latest-review score (list endpoint only; null/absent until reviewed).
   score: z.number().int().nullish(),
+  // Total cost across all completed runs; null when no priced run exists.
+  cost_usd: z.number().nullish(),
+  // Severity counts aggregated across each agent's current review (re-runs
+  // create new reviews; newest per agent wins); null before first review.
+  findings: z.object({
+    CRITICAL: z.number().int(),
+    WARNING: z.number().int(),
+    SUGGESTION: z.number().int(),
+  }).nullish(),
+  // Those current reviews' findings, inlined so the list can preview them on
+  // hover (list endpoint only; null/absent until reviewed).
+  latest_findings: z.array(Finding).nullish(),
 });
 export type PrMeta = z.infer<typeof PrMeta>;
 

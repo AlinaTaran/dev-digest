@@ -1,0 +1,25 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"Invoke the engineering-insights skill: before working in a module (client/server/reviewer-core/e2e) read its INSIGHTS.md first; re-read before adding an entry to avoid duplicates; at session end append only substantial NEW insights, append-only and never overwriting existing content.\"}}'"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq 'if (.stop_hook_active // false) then {} else {decision:\"block\", reason:\"Session ending — run the engineering-insights capture step. For each module you worked in (client/server/reviewer-core/e2e), append only substantial NEW insights to that module INSIGHTS.md under the correct section heading. Append-only: never overwrite or edit existing entries. If nothing non-obvious happened that is not already recorded, write nothing and stop.\"} end'",
+            "statusMessage": "Capturing engineering insights"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -4,13 +4,23 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Icon, Avatar, Badge, CircularScore } from "@devdigest/ui";
+import { Icon, Avatar, Badge, CircularScore, SeverityBadge } from "@devdigest/ui";
 import type { PrMeta } from "@/lib/types";
 import { SIZE_COLOR, STATUS_META } from "../../constants";
 import { relativeTime, sizeOf } from "../../helpers";
 import { s } from "../../styles";
+import { formatCost } from "@/lib/format";
+import { FindingsPopover } from "../FindingsPopover";
 
-export function PRRow({ pr, repoId }: { pr: PrMeta; repoId: string }) {
+export function PRRow({
+  pr,
+  repoId,
+  repoFullName,
+}: {
+  pr: PrMeta;
+  repoId: string;
+  repoFullName?: string | null;
+}) {
   const t = useTranslations("prReview");
   const router = useRouter();
   const [h, setH] = React.useState(false);
@@ -53,10 +63,31 @@ export function PRRow({ pr, repoId }: { pr: PrMeta; repoId: string }) {
           <span style={s.muted}>—</span>
         )}
       </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
+        {pr.findings &&
+        (pr.findings.CRITICAL > 0 || pr.findings.WARNING > 0 || pr.findings.SUGGESTION > 0) ? (
+          <FindingsPopover
+            findings={pr.latest_findings ?? []}
+            repoFullName={repoFullName}
+            headSha={pr.head_sha}
+          >
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              {pr.findings.CRITICAL > 0 && <SeverityBadge severity="CRITICAL" count={pr.findings.CRITICAL} compact underline />}
+              {pr.findings.WARNING > 0 && <SeverityBadge severity="WARNING" count={pr.findings.WARNING} compact underline />}
+              {pr.findings.SUGGESTION > 0 && <SeverityBadge severity="SUGGESTION" count={pr.findings.SUGGESTION} compact underline />}
+            </span>
+          </FindingsPopover>
+        ) : (
+          <span style={s.muted}>—</span>
+        )}
+      </div>
       <div>
         <Badge dot color={st.c} bg="transparent">
           {t(`list.status.${st.labelKey}`)}
         </Badge>
+      </div>
+      <div style={{ fontSize: 13, color: "var(--text-secondary)", fontVariantNumeric: "tabular-nums" }}>
+        {formatCost(pr.cost_usd)}
       </div>
       <div style={s.updatedCell}>{relativeTime(pr.updated_at)}</div>
     </div>

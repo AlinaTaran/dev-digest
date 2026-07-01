@@ -53,20 +53,25 @@ export function SeverityBadge({
   severity,
   count,
   compact,
+  underline,
 }: {
   severity: Severity;
   count?: number;
   compact?: boolean;
+  /** Dotted underline in the severity color — signals a hoverable trigger. */
+  underline?: boolean;
 }) {
   const s = SEV[severity];
   const I = Icon[s.icon];
+  const padY = compact ? 2 : 3;
+  const padX = compact ? 6 : 9;
   return (
     <span
       style={{
         display: "inline-flex",
         alignItems: "center",
         gap: 6,
-        padding: compact ? "2px 6px" : "3px 9px",
+        padding: `${padY}px ${padX}px`,
         borderRadius: 5,
         fontSize: 12,
         fontWeight: 600,
@@ -74,6 +79,18 @@ export function SeverityBadge({
         background: s.bg,
         textTransform: "uppercase",
         letterSpacing: "0.04em",
+        // Hover-trigger variant: bare (no pill) with evenly-spaced round dots
+        // in the severity colour beneath, matching the design's dotted leader.
+        ...(underline
+          ? {
+              background: "transparent",
+              padding: `${padY}px 3px ${padY + 5}px`,
+              backgroundImage: `radial-gradient(circle, ${s.c} 1.1px, transparent 1.6px)`,
+              backgroundSize: "5px 2px",
+              backgroundRepeat: "repeat-x",
+              backgroundPosition: "left bottom",
+            }
+          : null),
       }}
     >
       <I size={12.5} />

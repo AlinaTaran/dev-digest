@@ -38,6 +38,23 @@ export class PriceBook {
     return this.fallback(model, tokensIn, tokensOut);
   }
 
+  /**
+   * Display cost for a run: the actual API cost when known (`costUsd`), else a
+   * list-price `estimate(...)` for rows that predate the `cost_usd` column, else
+   * null. Centralizes the cost-fallback rule so the list, run history, and trace
+   * all resolve cost the same way (see server/INSIGHTS.md).
+   */
+  resolve(
+    costUsd: number | null | undefined,
+    model: string | null,
+    tokensIn: number | null,
+    tokensOut: number | null,
+  ): number | null {
+    if (costUsd != null) return costUsd;
+    if (model == null || tokensIn == null || tokensOut == null) return null;
+    return this.estimate(model, tokensIn, tokensOut);
+  }
+
   /** Force a synchronous-await refresh (e.g. to warm the cache). Never throws. */
   async refresh(): Promise<void> {
     try {

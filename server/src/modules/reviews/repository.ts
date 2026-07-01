@@ -161,6 +161,8 @@ export class ReviewRepository {
       score?: number | null;
       /** Findings that tripped the agent's gate; 0 on failed/cancelled runs. */
       blockers?: number | null;
+      /** Actual USD cost from OpenRouter API. Null on failed/cancelled runs. */
+      costUsd?: number | null;
       /** Failure reason (status='failed') / cancellation note. Null clears it. */
       error?: string | null;
     },
@@ -180,5 +182,9 @@ export class ReviewRepository {
 
   getRunTrace(runId: string): Promise<RunTrace | undefined> {
     return runRepo.getRunTrace(this.db, runId);
+  }
+
+  getRunCostUsd(runId: string): Promise<number | null> {
+    return runRepo.getRunCostUsd(this.db, runId);
   }
 }

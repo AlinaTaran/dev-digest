@@ -71,6 +71,16 @@ export function FindingsTab({
     setTarget((p) => ({ runId, n: (p?.n ?? 0) + 1 }));
   }, []);
 
+  // Findings per run, so the timeline can preview them on hover. Reviews are
+  // already loaded here (each review = one run), keyed by run_id.
+  const findingsByRun = React.useMemo(
+    () =>
+      Object.fromEntries(
+        runs.filter((r) => r.run_id).map((r) => [r.run_id as string, r.findings]),
+      ),
+    [runs],
+  );
+
   return (
     <section>
       {liveRunIds.length > 0 && (
@@ -131,6 +141,9 @@ export function FindingsTab({
           <RunHistory
             runs={prRuns ?? []}
             commits={prCommits}
+            findingsByRun={findingsByRun}
+            repoFullName={repoFullName}
+            headSha={headSha}
             onOpenTrace={handleOpenTrace}
             onGoToReview={handleGoToReview}
             onDelete={handleDelete}

@@ -11,6 +11,9 @@
     "sendReply": "Send reply",
     "cancel": "Cancel"
   },
+  "findingsPopover": {
+    "header": "{count} findings"
+  },
   "trifecta": {
     "lethal": "LETHAL TRIFECTA — ALL 3 PRESENT",
     "components": "TRIFECTA COMPONENTS",
@@ -91,7 +94,9 @@
       "author": "Author",
       "size": "Size",
       "score": "Score",
+      "findings": "Findings",
       "status": "Status",
+      "cost": "Cost",
       "updated": "Updated"
     },
     "filesCount": "{count} files",

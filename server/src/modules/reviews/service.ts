@@ -68,7 +68,11 @@ export class ReviewService {
 
   /** All runs for a PR (any status), newest first — the run history (incl. failures). */
   async listRuns(workspaceId: string, prId: string) {
-    return this.repo.listRunsForPull(workspaceId, prId);
+    const runs = await this.repo.listRunsForPull(workspaceId, prId);
+    return runs.map((r) => ({
+      ...r,
+      cost_usd: this.container.priceBook.resolve(r.cost_usd, r.model, r.tokens_in, r.tokens_out),
+    }));
   }
 
   /** Delete one run from the history (+ its trace). */
@@ -174,6 +178,19 @@ export class ReviewService {
   }
 
   async getRunTrace(runId: string): Promise<RunTrace | undefined> {
-    return this.repo.getRunTrace(runId);
+    const [trace, dbCostUsd] = await Promise.all([
+      this.repo.getRunTrace(runId),
+      this.repo.getRunCostUsd(runId),
+    ]);
+    if (!trace) return undefined;
+    // Prefer DB column (actual API cost for new runs); fall back to estimate for
+    // old runs where the column is null (pre-migration).
+    const cost_usd = this.container.priceBook.resolve(
+      dbCostUsd,
+      trace.config.model,
+      trace.stats.tokens_in,
+      trace.stats.tokens_out,
+    );
+    return { ...trace, stats: { ...trace.stats, cost_usd } };
   }
 }

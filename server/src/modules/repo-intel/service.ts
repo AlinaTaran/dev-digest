@@ -632,6 +632,32 @@ export class RepoIntelService implements RepoIntel {
   }
 
   /**
+   * Same top-N sample as `getConventionSamples`, but reads each file's content
+   * from the clone. Onion boundary: the (future) conventions service needs file
+   * contents, not just paths, but fs access must stay behind this facade.
+   * Missing/unreadable files are skipped (never throws), mirroring the
+   * `readClone` usage elsewhere in this file (e.g. `getCallerSignatures`).
+   */
+  async getConventionSampleFiles(
+    repoId: string,
+    n: number,
+  ): Promise<{ path: string; content: string }[]> {
+    const paths = await this.getConventionSamples(repoId, n);
+    if (paths.length === 0) return [];
+
+    const repo = await this.repo.getRepoBasics(repoId);
+    if (!repo || !repo.clonePath) return [];
+
+    const out: { path: string; content: string }[] = [];
+    for (const path of paths) {
+      const content = await readClone(repo.clonePath, path);
+      if (content == null) continue;
+      out.push({ path, content });
+    }
+    return out;
+  }
+
+  /**
    * Top-N file paths by rank DESC, dropping tests/configs/migrations and any
    * caller-supplied `exclude` substrings. Over-fetches by 10× before filtering
    * so the post-filter still yields N where possible.

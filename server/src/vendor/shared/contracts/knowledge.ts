@@ -141,13 +141,21 @@ export const CommunitySkill = z.object({
 export type CommunitySkill = z.infer<typeof CommunitySkill>;
 
 // ---- Conventions ----
+// `status` replaces the prior boolean `accepted` field: re-scan replaces
+// `pending` candidates but must NOT resurrect previously accepted/rejected ones.
+export const ConventionStatus = z.enum(['pending', 'accepted', 'rejected']);
+export type ConventionStatus = z.infer<typeof ConventionStatus>;
+
 export const ConventionCandidate = z.object({
   id: z.string(),
   rule: z.string(),
+  category: z.string(),
   evidence_path: z.string(),
+  evidence_line_start: z.number().int().nullish(),
+  evidence_line_end: z.number().int().nullish(),
   evidence_snippet: z.string(),
   confidence: z.number().min(0).max(1),
-  accepted: z.boolean(),
+  status: ConventionStatus,
 });
 export type ConventionCandidate = z.infer<typeof ConventionCandidate>;
 

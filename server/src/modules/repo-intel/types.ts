@@ -161,6 +161,12 @@ export interface RepoIntel {
   getUnresolvedReferences(repoId: string, files: string[]): Promise<RefRow[]>;
   /** Top-N file paths by rank, filtered of tests/configs. */
   getConventionSamples(repoId: string, n: number): Promise<string[]>;
+  /**
+   * Same top-N sample as `getConventionSamples`, but with file contents read
+   * from the clone — so the (future) conventions extractor never touches fs
+   * directly. Files that don't exist / can't be read are silently skipped.
+   */
+  getConventionSampleFiles(repoId: string, n: number): Promise<{ path: string; content: string }[]>;
 
   // --- T3: onboarding reading-path + critical paths (graph required) ------
   getTopFilesByRank(

@@ -66,7 +66,17 @@ export function ConventionCandidateCard({
           ) : (
             <span style={s.title}>{candidate.rule}</span>
           )}
-          <IconBtn icon="Edit" label={t("card.editRule")} size={22} onClick={() => setEditing(true)} />
+          {!editing && (
+            <IconBtn
+              icon="Edit"
+              label={t("card.editRule")}
+              size={22}
+              onClick={() => {
+                setRuleDraft(candidate.rule);
+                setEditing(true);
+              }}
+            />
+          )}
           <span style={s.category}>{candidate.category}</span>
           {accepted && <span style={s.statusTag("var(--ok)")}>{t("card.accepted")}</span>}
           {rejected && <span style={s.statusTag("var(--text-muted)")}>{t("card.rejected")}</span>}

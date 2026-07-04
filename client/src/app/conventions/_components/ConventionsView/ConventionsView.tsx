@@ -24,14 +24,22 @@ export function ConventionsView() {
   const extract = useExtractConventions(repoId);
   const bulkUpdate = useUpdateConvention(repoId);
   const [showCreateSkill, setShowCreateSkill] = React.useState(false);
+  const [isDeselecting, setIsDeselecting] = React.useState(false);
 
   const list = candidates ?? [];
   const acceptedCandidates = list.filter((c) => c.status === "accepted");
   const canDeselect = list.some((c) => c.status !== "pending");
 
-  const deselectAll = () => {
-    for (const c of list) {
-      if (c.status !== "pending") bulkUpdate.mutate({ id: c.id, patch: { status: "pending" } });
+  const deselectAll = async () => {
+    setIsDeselecting(true);
+    try {
+      await Promise.allSettled(
+        list
+          .filter((c) => c.status !== "pending")
+          .map((c) => bulkUpdate.mutateAsync({ id: c.id, patch: { status: "pending" } })),
+      );
+    } finally {
+      setIsDeselecting(false);
     }
   };
 
@@ -94,7 +102,7 @@ export function ConventionsView() {
       ) : (
         <>
           <div style={s.toolbar}>
-            <Button kind="ghost" size="sm" disabled={!canDeselect} onClick={deselectAll}>
+            <Button kind="ghost" size="sm" disabled={!canDeselect || isDeselecting} onClick={deselectAll}>
               {t("toolbar.deselectAll")}
             </Button>
             <span style={s.acceptedCount}>

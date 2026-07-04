@@ -60,15 +60,19 @@ export class ConventionsService {
    * repo-intel top-N sample, combined into one list of `{ path, content }`.
    */
   private async gatherSamples(workspaceId: string, repoId: string): Promise<SampleFile[]> {
+    // Must be checked BEFORE any repo-content read: `repoIntel.getConventionSampleFiles`
+    // takes only `repoId` with no workspace check, so skipping this guard would let a
+    // caller extract (and, via `insertMany`, persist under their own workspaceId) source
+    // snippets from a repo owned by a different workspace.
     const ref = await this.repo.getRepoRef(workspaceId, repoId);
+    if (!ref) return [];
+
     const configSamples: SampleFile[] = [];
-    if (ref) {
-      for (const path of CONFIG_CANDIDATE_FILENAMES) {
-        const content = await this.container.git
-          .readFile({ owner: ref.owner, name: ref.name }, path)
-          .catch(() => null);
-        if (content != null) configSamples.push({ path, content });
-      }
+    for (const path of CONFIG_CANDIDATE_FILENAMES) {
+      const content = await this.container.git
+        .readFile({ owner: ref.owner, name: ref.name }, path)
+        .catch(() => null);
+      if (content != null) configSamples.push({ path, content });
     }
     const topSamples = await this.container.repoIntel.getConventionSampleFiles(
       repoId,

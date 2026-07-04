@@ -331,4 +331,42 @@ describe('ConventionsService.extract', () => {
     expect(freshRows).toHaveLength(1);
     expect(freshRows[0]!.rule).toBe('A freshly proposed convention.');
   });
+
+  it('returns no candidates and never samples repo content for a repoId outside the caller workspace', async () => {
+    // Regression test for a workspace-isolation gap: `getRepoRef` returning
+    // undefined (repoId belongs to a different workspace, or doesn't exist)
+    // must short-circuit BEFORE any repo-content read — `repoIntel.getConventionSampleFiles`
+    // takes only repoId with no workspace check, so calling it unconditionally
+    // would let a caller extract (and persist under their own workspaceId)
+    // source snippets from a repo they don't own.
+    let sampleFilesCalled = false;
+    const llm = new MockLLMProvider('openai', {
+      structuredBySchema: {
+        ConventionExtraction: { candidates: [{ category: 'x', rule: 'should never be proposed', evidence_path: 'x', evidence_snippet: 'x', confidence: 0.9 }] },
+      },
+    });
+    const container = fakeContainer({ sampleFiles: [SAMPLE_FILE], llm });
+    (container as unknown as { repoIntel: { getConventionSampleFiles: () => Promise<SampleFile[]> } }).repoIntel = {
+      getConventionSampleFiles: async () => {
+        sampleFilesCalled = true;
+        return [SAMPLE_FILE];
+      },
+    };
+    const insertMany = async () => {
+      throw new Error('must not persist anything for a foreign repoId');
+    };
+    const repo = {
+      getRepoRef: async () => undefined,
+      insertMany,
+      listByRepo: async () => [],
+      updateFields: async () => undefined,
+      deletePendingByRepo: async () => {},
+    } as unknown as ConventionsRepository;
+
+    const service = withFakeRepo(new ConventionsService(container), repo);
+    const result = await service.extract('attacker-ws', 'victim-repo');
+
+    expect(result).toEqual([]);
+    expect(sampleFilesCalled).toBe(false);
+  });
 });

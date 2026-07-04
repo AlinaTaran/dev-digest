@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { ConventionCandidate } from "@devdigest/shared";
-import { buildBodyMarkdown, estimateTokens } from "./helpers";
+import { buildBodyMarkdown, estimateTokens, slugifyRule } from "./helpers";
 
 function candidate(over: Partial<ConventionCandidate>): ConventionCandidate {
   return {
@@ -17,45 +17,62 @@ function candidate(over: Partial<ConventionCandidate>): ConventionCandidate {
   };
 }
 
-describe("buildBodyMarkdown", () => {
-  it("returns an empty string for no candidates", () => {
-    expect(buildBodyMarkdown([])).toBe("");
+describe("slugifyRule", () => {
+  it("kebab-cases arbitrary rule text", () => {
+    expect(slugifyRule("Always use async/await instead of .then() chains")).toBe(
+      "always-use-async-await-instead-of-then-chains",
+    );
   });
 
-  it("emits a single ## heading with one bullet per candidate in that category", () => {
-    const md = buildBodyMarkdown([
-      candidate({ rule: "Use camelCase", category: "naming", evidence_path: "src/a.ts", evidence_line_start: 3 }),
-      candidate({ rule: "No default exports", category: "naming", evidence_path: "src/b.ts", evidence_line_start: 7 }),
+  it("falls back to a placeholder for text with no alphanumerics", () => {
+    expect(slugifyRule("!!!")).toBe("rule");
+  });
+});
+
+describe("buildBodyMarkdown", () => {
+  it("emits an H1 title and a directive intro sentence with no candidates", () => {
+    const md = buildBodyMarkdown("acme-conventions", []);
+    expect(md).toBe(
+      "# acme-conventions\n\n" +
+        "House conventions for `acme`. Flag changes that violate any rule below and cite the offending `file:line`.",
+    );
+  });
+
+  it("emits one ## <rule-slug> section per candidate, in order, with rule text, evidence line, and snippet", () => {
+    const md = buildBodyMarkdown("acme-conventions", [
+      candidate({ rule: "Use camelCase", evidence_path: "src/a.ts", evidence_line_start: 3, evidence_line_end: 3, evidence_snippet: "const fooBar = 1;" }),
     ]);
     expect(md).toBe(
-      "## naming\n" +
-        "- Use camelCase — Detected in `src/a.ts:3`\n" +
-        "- No default exports — Detected in `src/b.ts:7`",
+      "# acme-conventions\n\n" +
+        "House conventions for `acme`. Flag changes that violate any rule below and cite the offending `file:line`.\n\n" +
+        "## use-camelcase\n" +
+        "Use camelCase\n\n" +
+        "Detected in `src/a.ts:3`:\n" +
+        "```\nconst fooBar = 1;\n```",
     );
   });
 
-  it("groups candidates by category and orders sections by first-seen category order", () => {
-    const md = buildBodyMarkdown([
-      candidate({ rule: "Rule A", category: "error-handling", evidence_path: "src/a.ts", evidence_line_start: 1 }),
-      candidate({ rule: "Rule B", category: "naming", evidence_path: "src/b.ts", evidence_line_start: 2 }),
-      candidate({ rule: "Rule C", category: "error-handling", evidence_path: "src/c.ts", evidence_line_start: 3 }),
+  it("renders a line range when start and end differ", () => {
+    const md = buildBodyMarkdown("acme-conventions", [
+      candidate({ rule: "Rule A", evidence_path: "src/a.ts", evidence_line_start: 2, evidence_line_end: 5 }),
     ]);
-    const sections = md.split("\n\n");
-    expect(sections).toHaveLength(2);
-    // error-handling appears first because its first candidate (Rule A) came first.
-    expect(sections[0]).toBe(
-      "## error-handling\n" +
-        "- Rule A — Detected in `src/a.ts:1`\n" +
-        "- Rule C — Detected in `src/c.ts:3`",
-    );
-    expect(sections[1]).toBe("## naming\n- Rule B — Detected in `src/b.ts:2`");
+    expect(md).toContain("Detected in `src/a.ts:2-5`:");
   });
 
-  it("falls back to a `?` line marker when a candidate has no evidence line", () => {
-    const md = buildBodyMarkdown([
-      candidate({ rule: "Rule A", category: "naming", evidence_path: "src/a.ts", evidence_line_start: null }),
+  it("falls back to just the file path when there is no evidence line", () => {
+    const md = buildBodyMarkdown("acme-conventions", [
+      candidate({ rule: "Rule A", evidence_path: "src/a.ts", evidence_line_start: null, evidence_line_end: null }),
     ]);
-    expect(md).toBe("## naming\n- Rule A — Detected in `src/a.ts:?`");
+    expect(md).toContain("Detected in `src/a.ts`:");
+  });
+
+  it("keeps candidates in the order given (not grouped/sorted)", () => {
+    const md = buildBodyMarkdown("acme-conventions", [
+      candidate({ rule: "Rule A" }),
+      candidate({ rule: "Rule B" }),
+    ]);
+    const headingOrder = [...md.matchAll(/^## (.+)$/gm)].map((m) => m[1]);
+    expect(headingOrder).toEqual(["rule-a", "rule-b"]);
   });
 });
 

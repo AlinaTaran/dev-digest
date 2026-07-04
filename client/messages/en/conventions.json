@@ -36,16 +36,26 @@
     "createSkill": "Create skill"
   },
   "createSkillModal": {
-    "title": "Bundle into skill",
-    "subtitle": "{count, plural, one {Turn # accepted convention into a reusable skill.} other {Turn # accepted conventions into a reusable skill.}}",
+    "title": "Create skill from conventions",
+    "mergedBanner": "Merged from {count, plural, one {# accepted convention} other {# accepted conventions}} in {repoName}. Everything below is editable before you save.",
     "enabledLabel": "Enabled",
+    "enabledHint": "Whether this block is added to agents' prompts.",
     "tokenCount": "~{count} tokens",
-    "defaultDescription": "Conventions extracted from {repoName}.",
+    "unsaved": "unsaved",
+    "defaultDescription": "{count, plural, one {# house convention} other {# house conventions}} extracted from {repoName}.",
     "fields": {
       "name": "Name",
       "description": "Description",
+      "type": "Type",
       "body": "Body",
-      "bodyHint": "Markdown, grouped by category — edit before creating."
+      "bodyFileName": "{name}.md",
+      "bodyHint": "Markdown, one section per rule with its evidence — edit before creating."
+    },
+    "typeOptions": {
+      "rubric": "Rubric",
+      "convention": "Convention",
+      "security": "Security",
+      "custom": "Custom"
     },
     "cancel": "Cancel",
     "create": "Create skill",

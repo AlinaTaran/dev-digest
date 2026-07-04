@@ -78,25 +78,42 @@ export function ConventionCandidateCard({
             />
           )}
           <span style={s.category}>{candidate.category}</span>
-          {accepted && <span style={s.statusTag("var(--ok)")}>{t("card.accepted")}</span>}
-          {rejected && <span style={s.statusTag("var(--text-muted)")}>{t("card.rejected")}</span>}
+        </div>
+        <div style={s.actions}>
+          <Button
+            kind="secondary"
+            size="sm"
+            icon="Check"
+            active={accepted}
+            disabled={update.isPending}
+            onClick={() => update.mutate({ id: candidate.id, patch: { status: "accepted" } })}
+          >
+            {pendingStatus === "accepted" ? t("card.accepting") : t("card.accept")}
+          </Button>
+          <Button
+            kind="ghost"
+            size="sm"
+            icon="X"
+            active={rejected}
+            disabled={update.isPending}
+            onClick={() => update.mutate({ id: candidate.id, patch: { status: "rejected" } })}
+          >
+            {pendingStatus === "rejected" ? t("card.rejecting") : t("card.reject")}
+          </Button>
         </div>
       </div>
 
-      <div style={s.metaRow}>
-        <MonoLink>
-          {candidate.evidence_path}
-          {evidenceLineSuffix(candidate)}
-        </MonoLink>
-      </div>
-
-      <div style={s.snippetWrap}>
+      <div style={s.codeBox}>
+        <div style={s.codeBoxHeader}>
+          <MonoLink>
+            {candidate.evidence_path}
+            {evidenceLineSuffix(candidate)}
+          </MonoLink>
+          <CopyButton text={candidate.evidence_snippet} />
+        </div>
         <pre className="mono" style={s.snippet}>
           {candidate.evidence_snippet}
         </pre>
-        <div style={s.copyBtn}>
-          <CopyButton text={candidate.evidence_snippet} />
-        </div>
       </div>
 
       <div style={s.confidenceRow}>
@@ -107,29 +124,6 @@ export function ConventionCandidateCard({
         <span className="mono tnum" style={s.confidencePct}>
           {pct}%
         </span>
-      </div>
-
-      <div style={s.actions}>
-        <Button
-          kind="secondary"
-          size="sm"
-          icon="Check"
-          active={accepted}
-          disabled={update.isPending}
-          onClick={() => update.mutate({ id: candidate.id, patch: { status: "accepted" } })}
-        >
-          {pendingStatus === "accepted" ? t("card.accepting") : t("card.accept")}
-        </Button>
-        <Button
-          kind="ghost"
-          size="sm"
-          icon="X"
-          active={rejected}
-          disabled={update.isPending}
-          onClick={() => update.mutate({ id: candidate.id, patch: { status: "rejected" } })}
-        >
-          {pendingStatus === "rejected" ? t("card.rejecting") : t("card.reject")}
-        </Button>
       </div>
     </div>
   );

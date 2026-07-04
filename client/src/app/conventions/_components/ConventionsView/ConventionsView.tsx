@@ -63,7 +63,7 @@ export function ConventionsView() {
         <div>
           <h1 style={s.pageTitle}>
             {t("page.headingPrefix")}
-            {activeRepo?.name ?? t("page.repoFallback")}
+            <span style={s.pageTitleRepo}>{activeRepo?.name ?? t("page.repoFallback")}</span>
           </h1>
           <p style={s.pageSubtitle}>
             {candidates ? t("page.candidateCount", { count: list.length }) : t("page.scanning")}
@@ -102,7 +102,13 @@ export function ConventionsView() {
       ) : (
         <>
           <div style={s.toolbar}>
-            <Button kind="ghost" size="sm" disabled={!canDeselect || isDeselecting} onClick={deselectAll}>
+            <Button
+              kind="ghost"
+              size="sm"
+              icon="X"
+              disabled={!canDeselect || isDeselecting}
+              onClick={deselectAll}
+            >
               {t("toolbar.deselectAll")}
             </Button>
             <span style={s.acceptedCount}>

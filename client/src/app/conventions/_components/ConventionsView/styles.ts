@@ -10,6 +10,7 @@ export const s = {
     marginBottom: 18,
   } satisfies CSSProperties,
   pageTitle: { fontSize: 20, fontWeight: 700, color: "var(--text-primary)" } satisfies CSSProperties,
+  pageTitleRepo: { color: "var(--accent)" } satisfies CSSProperties,
   pageSubtitle: { fontSize: 13, color: "var(--text-secondary)", marginTop: 4 } satisfies CSSProperties,
   headerActions: { display: "flex", alignItems: "center", gap: 8, flexShrink: 0 } satisfies CSSProperties,
   banner: {
@@ -31,6 +32,6 @@ export const s = {
     marginBottom: 14,
   } satisfies CSSProperties,
   acceptedCount: { fontSize: 13, color: "var(--text-secondary)", flex: 1 } satisfies CSSProperties,
-  loadingStack: { display: "flex", flexDirection: "column", gap: 10 } satisfies CSSProperties,
-  list: { display: "flex", flexDirection: "column", gap: 10 } satisfies CSSProperties,
+  loadingStack: { display: "flex", flexDirection: "column", gap: 14 } satisfies CSSProperties,
+  list: { display: "flex", flexDirection: "column", gap: 14 } satisfies CSSProperties,
 } as const;

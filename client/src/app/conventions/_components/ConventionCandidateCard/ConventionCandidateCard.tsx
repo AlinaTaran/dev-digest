@@ -45,39 +45,43 @@ export function ConventionCandidateCard({
   return (
     <div style={s.card(accepted, rejected)}>
       <div style={s.header}>
-        <div style={s.titleWrap}>
-          {editing ? (
-            <input
-              autoFocus
-              className="mono"
-              value={ruleDraft}
-              onChange={(e) => setRuleDraft(e.target.value)}
-              onBlur={commitRule}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") commitRule();
-                if (e.key === "Escape") {
+        <div style={s.titleCol}>
+          <div style={s.titleRow}>
+            {editing ? (
+              <input
+                autoFocus
+                className="mono"
+                value={ruleDraft}
+                onChange={(e) => setRuleDraft(e.target.value)}
+                onBlur={commitRule}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") commitRule();
+                  if (e.key === "Escape") {
+                    setRuleDraft(candidate.rule);
+                    setEditing(false);
+                  }
+                }}
+                aria-label={t("card.editRule")}
+                style={s.ruleInput}
+              />
+            ) : (
+              <span style={s.title}>{candidate.rule}</span>
+            )}
+          </div>
+          <div style={s.metaRow}>
+            {!editing && (
+              <IconBtn
+                icon="Edit"
+                label={t("card.editRule")}
+                size={20}
+                onClick={() => {
                   setRuleDraft(candidate.rule);
-                  setEditing(false);
-                }
-              }}
-              aria-label={t("card.editRule")}
-              style={s.ruleInput}
-            />
-          ) : (
-            <span style={s.title}>{candidate.rule}</span>
-          )}
-          {!editing && (
-            <IconBtn
-              icon="Edit"
-              label={t("card.editRule")}
-              size={22}
-              onClick={() => {
-                setRuleDraft(candidate.rule);
-                setEditing(true);
-              }}
-            />
-          )}
-          <span style={s.category}>{candidate.category}</span>
+                  setEditing(true);
+                }}
+              />
+            )}
+            <span style={s.category}>{candidate.category}</span>
+          </div>
         </div>
         <div style={s.actions}>
           <Button

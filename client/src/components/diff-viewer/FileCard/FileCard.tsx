@@ -7,7 +7,7 @@ import { useTranslations } from "next-intl";
 import { Icon } from "@devdigest/ui";
 import type { PrFile } from "@/lib/types";
 import { AUTO_EXPAND_MAX_LINES } from "../constants";
-import { parsePatch, type Line } from "../helpers";
+import { parsePatch, lineKey, type Line } from "../helpers";
 import {
   buildThreads,
   keysForLine,
@@ -16,8 +16,8 @@ import {
   type DiffCommentApi,
 } from "../comments";
 import { s, chevronFor } from "../styles";
-import { CodeLine } from "../CodeLine";
-import { OutdatedComments } from "../OutdatedComments";
+import { CodeLine } from "../CodeLine/CodeLine";
+import { OutdatedComments } from "../OutdatedComments/OutdatedComments";
 
 /** Threads anchored to a given parsed line (RIGHT=new, LEFT=old). */
 function threadsForLine(ln: Line, matched: Map<string, CommentThread[]>): CommentThread[] {
@@ -65,9 +65,7 @@ export function FileCard({ file, commenting }: { file: PrFile; commenting?: Diff
           <span style={s.delText}>−{file.deletions}</span>
         </span>
         {commentCount > 0 && (
-          <span
-            style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "var(--text-muted)" }}
-          >
+          <span style={s.commentCount}>
             <Icon.MessageSquare size={12} />
             {commentCount}
           </span>
@@ -78,9 +76,9 @@ export function FileCard({ file, commenting }: { file: PrFile; commenting?: Diff
           {lines.length === 0 ? (
             <div style={s.noDiff}>{t("diffViewer.noDiffText")}</div>
           ) : (
-            lines.map((ln, i) => (
+            lines.map((ln) => (
               <CodeLine
-                key={i}
+                key={lineKey(ln)}
                 ln={ln}
                 path={file.path}
                 threads={threadsForLine(ln, matched)}

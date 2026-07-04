@@ -1,7 +1,7 @@
 # e2e — writing a flow
 
 How the deterministic browser suite works and how to add a flow. For commands and
-conventions see `e2e/CLAUDE.md`; the flow files themselves live in `e2e/specs/`.
+conventions see `e2e/AGENTS.md`; the flow files themselves live in `e2e/specs/`.
 
 ## What this suite is
 

@@ -47,12 +47,26 @@ const COLORS: Record<ToastKind, { bg: string; border: string; icon: string }> = 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = React.useState<Toast[]>([]);
   const seq = React.useRef(1);
+  const timers = React.useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
 
   const push = React.useCallback((message: string, kind: ToastKind = "info") => {
     const id = seq.current++;
     setItems((prev) => [...prev, { id, kind, message }]);
-    // auto-dismiss after 4s
-    setTimeout(() => setItems((prev) => prev.filter((t) => t.id !== id)), 4000);
+    // auto-dismiss after 4s; track the handle so it's cleared on unmount.
+    const handle = setTimeout(() => {
+      setItems((prev) => prev.filter((t) => t.id !== id));
+      timers.current.delete(handle);
+    }, 4000);
+    timers.current.add(handle);
+  }, []);
+
+  // Clear any pending dismiss timers if the provider unmounts.
+  React.useEffect(() => {
+    const pending = timers.current;
+    return () => {
+      pending.forEach(clearTimeout);
+      pending.clear();
+    };
   }, []);
 
   const api = React.useMemo<ToastApi>(

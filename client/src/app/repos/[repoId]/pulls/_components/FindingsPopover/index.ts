@@ -1,1 +1,0 @@
-export { FindingsPopover } from "./FindingsPopover";

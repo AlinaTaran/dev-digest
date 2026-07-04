@@ -2,13 +2,13 @@ import type { CSSProperties } from "react";
 
 /** Co-located styles for ConventionCandidateCard. */
 export const s = {
-  card: (accepted: boolean, rejected: boolean): CSSProperties => ({
+  card: (rejected: boolean): CSSProperties => ({
     borderRadius: 8,
     borderStyle: "solid",
     borderColor: "var(--border)",
     borderWidth: 1,
     borderLeftWidth: 3,
-    borderLeftColor: accepted ? "var(--ok)" : rejected ? "var(--text-muted)" : "var(--border-strong)",
+    borderLeftColor: "var(--ok)",
     background: "var(--bg-elevated)",
     padding: "18px 22px",
     opacity: rejected ? 0.6 : 1,

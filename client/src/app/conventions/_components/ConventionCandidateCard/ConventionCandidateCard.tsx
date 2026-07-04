@@ -43,7 +43,7 @@ export function ConventionCandidateCard({
   };
 
   return (
-    <div style={s.card(accepted, rejected)}>
+    <div style={s.card(rejected)}>
       <div style={s.header}>
         <div style={s.titleCol}>
           <div style={s.titleRow}>
@@ -85,24 +85,30 @@ export function ConventionCandidateCard({
         </div>
         <div style={s.actions}>
           <Button
-            kind="secondary"
+            kind={accepted ? "primary" : "secondary"}
             size="sm"
             icon="Check"
-            active={accepted}
             disabled={update.isPending}
             onClick={() => update.mutate({ id: candidate.id, patch: { status: "accepted" } })}
           >
-            {pendingStatus === "accepted" ? t("card.accepting") : t("card.accept")}
+            {pendingStatus === "accepted"
+              ? t("card.accepting")
+              : accepted
+                ? t("card.accepted")
+                : t("card.accept")}
           </Button>
           <Button
-            kind="ghost"
+            kind={rejected ? "secondary" : "ghost"}
             size="sm"
             icon="X"
-            active={rejected}
             disabled={update.isPending}
             onClick={() => update.mutate({ id: candidate.id, patch: { status: "rejected" } })}
           >
-            {pendingStatus === "rejected" ? t("card.rejecting") : t("card.reject")}
+            {pendingStatus === "rejected"
+              ? t("card.rejecting")
+              : rejected
+                ? t("card.rejected")
+                : t("card.reject")}
           </Button>
         </div>
       </div>

@@ -7,12 +7,12 @@ import React from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Button, Dropdown, ErrorState, Skeleton, Icon, Badge } from "@devdigest/ui";
 import { AppShell } from "../../../components/app-shell";
-import { AgentCard } from "../_components/AgentCard";
-import { AgentEditor } from "./_components/AgentEditor";
+import { AgentCard } from "../_components/AgentCard/AgentCard";
+import { AgentEditor } from "./_components/AgentEditor/AgentEditor";
 import { useAgents, useAgent, useUpdateAgent } from "../../../lib/hooks/agents";
 import { ApiError } from "../../../lib/api";
 
-const VALID_TABS = ["config"];
+const VALID_TABS = ["config", "skills"];
 
 export default function AgentEditorPage() {
   const params = useParams<{ id: string }>();
@@ -36,6 +36,13 @@ export default function AgentEditorPage() {
     { label: "Agents", href: "/agents" },
     { label: agent?.name ?? "Agent" },
   ];
+
+  // Stable across renders (router is stable) — avoids rebuilding the array +
+  // object + closure on every render just to feed the Dropdown.
+  const addAgentItems = React.useMemo(
+    () => [{ label: "Create from scratch", icon: "Edit" as const, onClick: () => router.push("/agents") }],
+    [router],
+  );
 
   if (isError || (!isLoading && !agent)) {
     return (
@@ -75,7 +82,7 @@ export default function AgentEditorPage() {
                     Add
                   </Button>
                 }
-                items={[{ label: "Create from scratch", icon: "Edit", onClick: () => router.push("/agents") }]}
+                items={addAgentItems}
               />
             </div>
           </div>

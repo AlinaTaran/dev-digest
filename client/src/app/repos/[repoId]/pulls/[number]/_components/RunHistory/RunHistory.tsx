@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { Badge, Icon, CircularScore, SeverityBadge, type IconName } from "@devdigest/ui";
 import type { RunSummary, PrCommit, FindingRecord } from "@devdigest/shared";
 import { formatCost } from "@/lib/format";
-import { FindingsPopover } from "../../../_components/FindingsPopover";
+import { FindingsPopover } from "../../../_components/FindingsPopover/FindingsPopover";
 
 /** Per-severity counts for the timeline badges. */
 function severityCounts(findings: FindingRecord[]) {
@@ -86,6 +86,38 @@ const commitRowStyle: React.CSSProperties = {
   background: "transparent",
 };
 
+// Static row-content styles (hoisted so they aren't rebuilt every render).
+const infoCol: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 2, flex: 1, minWidth: 0 };
+const agentLine: React.CSSProperties = { fontSize: 13, fontWeight: 600, color: "var(--text-primary)" };
+const modelText: React.CSSProperties = { fontSize: 12, fontWeight: 400, color: "var(--text-muted)" };
+const errorText: React.CSSProperties = {
+  fontSize: 12,
+  color: "var(--crit)",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+const countsRow: React.CSSProperties = { display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-muted)" };
+const badgesWrap: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 8 };
+const findingsText: React.CSSProperties = { fontSize: 12, color: "var(--text-muted)" };
+const metaCol: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "flex-end",
+  gap: 2,
+  fontSize: 11,
+  color: "var(--text-muted)",
+  flexShrink: 0,
+};
+const deleteBtn: React.CSSProperties = {
+  display: "inline-flex",
+  padding: 3,
+  borderRadius: 5,
+  color: "var(--text-muted)",
+  flexShrink: 0,
+  cursor: "pointer",
+};
+
 type TimelineItem =
   | { kind: "run"; ts: number; run: RunSummary }
   | { kind: "commit"; ts: number; commit: PrCommit };
@@ -141,8 +173,8 @@ function RunRow({
         {t(`runStatus.${o.key}`)}
       </Badge>
       {settled && r.score != null && <CircularScore score={r.score} size={30} stroke={3} />}
-      <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
+      <div style={infoCol}>
+        <div style={agentLine}>
           <button
             type="button"
             onClick={() => onGoToReview?.(r.run_id)}
@@ -162,22 +194,19 @@ function RunRow({
           >
             {r.agent_name ?? "Agent"}
           </button>{" "}
-          <span className="mono" style={{ fontSize: 12, fontWeight: 400, color: "var(--text-muted)" }}>
+          <span className="mono" style={modelText}>
             {r.provider}/{r.model}
           </span>
         </div>
         {r.status === "failed" && r.error && (
-          <div
-            style={{ fontSize: 12, color: "var(--crit)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-            title={r.error}
-          >
+          <div style={errorText} title={r.error}>
             {r.error}
           </div>
         )}
         {settled &&
           (c ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-muted)" }}>
-              <span ref={badgesRef} style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+            <div style={countsRow}>
+              <span ref={badgesRef} style={badgesWrap}>
                 {c.CRITICAL > 0 && <SeverityBadge severity="CRITICAL" count={c.CRITICAL} compact underline />}
                 {c.WARNING > 0 && <SeverityBadge severity="WARNING" count={c.WARNING} compact underline />}
                 {c.SUGGESTION > 0 && <SeverityBadge severity="SUGGESTION" count={c.SUGGESTION} compact underline />}
@@ -185,13 +214,13 @@ function RunRow({
               {(r.blockers ?? 0) > 0 && <span>{t("runStatus.blockers", { count: r.blockers ?? 0 })}</span>}
             </div>
           ) : (
-            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+            <div style={findingsText}>
               {t("runStatus.findings", { count: r.findings_count ?? 0 })}
               {(r.blockers ?? 0) > 0 ? t("runStatus.blockers", { count: r.blockers ?? 0 }) : ""}
             </div>
           ))}
       </div>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, fontSize: 11, color: "var(--text-muted)", flexShrink: 0 }}>
+      <div style={metaCol}>
         {r.ran_at && <span>{new Date(r.ran_at).toLocaleTimeString()}</span>}
         {settled && (r.tokens_in != null || r.tokens_out != null) && (
           <span className="tnum">
@@ -215,7 +244,7 @@ function RunRow({
           aria-label={t("timeline.deleteRun")}
           title={t("timeline.deleteRun")}
           onClick={() => onDelete(r.run_id)}
-          style={{ display: "inline-flex", padding: 3, borderRadius: 5, color: "var(--text-muted)", flexShrink: 0, cursor: "pointer" }}
+          style={deleteBtn}
         >
           <Icon.Trash size={13} />
         </span>

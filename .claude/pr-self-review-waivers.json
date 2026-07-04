@@ -1,0 +1,4 @@
+{
+  "$comment": "Intentional, reviewed exceptions to the pr-self-review CRITICAL gate. A waiver matches a finding by `rule` + `file` (optional `line`) and drops that CRITICAL from the gate while keeping it visible in the report. Committed on purpose — every entry needs a reason + author. See .claude/skills/pr-self-review/severity.md.",
+  "waivers": []
+}

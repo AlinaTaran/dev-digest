@@ -8,6 +8,22 @@ export interface Line {
   newNo?: number;
 }
 
+/** Stable React key for a parsed line — unique within a file, so refetching the
+ *  diff reuses the right CodeLine instance instead of leaking hover/compose state
+ *  across rows (which array-index keys would do). */
+export function lineKey(ln: Line): string {
+  switch (ln.kind) {
+    case "add":
+      return `a:${ln.newNo}`;
+    case "del":
+      return `d:${ln.oldNo}`;
+    case "ctx":
+      return `c:${ln.oldNo}:${ln.newNo}`;
+    case "hunk":
+      return `h:${ln.text}`;
+  }
+}
+
 /** Parse unified-diff patch text into renderable lines with old/new line numbers. */
 export function parsePatch(patch: string | null | undefined): Line[] {
   if (!patch) return [];

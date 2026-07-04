@@ -29,6 +29,13 @@ export const s = {
     whiteSpace: "nowrap",
   } satisfies CSSProperties,
   fileStat: { fontSize: 12 } satisfies CSSProperties,
+  commentCount: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 4,
+    fontSize: 12,
+    color: "var(--text-muted)",
+  } satisfies CSSProperties,
   addText: { color: "var(--code-add-text)" } satisfies CSSProperties,
   delText: { color: "var(--code-del-text)" } satisfies CSSProperties,
   fileBody: {
@@ -56,6 +63,7 @@ export const s = {
     color: "var(--text-muted)",
     userSelect: "none",
     flexShrink: 0,
+    position: "relative", // anchors the hover "+" add-comment button
   } satisfies CSSProperties,
   lineText: {
     flex: 1,

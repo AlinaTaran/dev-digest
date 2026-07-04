@@ -6,6 +6,10 @@ import {
   GENERAL_REVIEWER_PROMPT,
   SECURITY_REVIEWER_PROMPT,
   PERFORMANCE_REVIEWER_PROMPT,
+  TEST_QUALITY_REVIEWER_PROMPT,
+  BRANCH_COVERAGE_GATE_BODY,
+  CORNER_CASE_CHECKLIST_BODY,
+  MOCK_OVERUSE_GATE_BODY,
 } from './seed-prompts.js';
 
 /** Default provider/model for the built-in reviewer agents. */
@@ -211,6 +215,18 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
       version: 1,
       createdBy: userId,
     },
+    {
+      workspaceId,
+      name: 'Test Quality Reviewer',
+      description:
+        'Judges the tests in a diff for missing branch coverage, untested corner cases, and mocks broad enough to hide real behaviour.',
+      provider: DEFAULT_PROVIDER,
+      model: DEFAULT_MODEL,
+      systemPrompt: TEST_QUALITY_REVIEWER_PROMPT,
+      enabled: true,
+      version: 1,
+      createdBy: userId,
+    },
   ];
   for (const a of seedAgents) {
     const [existing] = await db
@@ -218,6 +234,76 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
       .from(t.agents)
       .where(and(eq(t.agents.workspaceId, workspaceId), eq(t.agents.name, a.name)));
     if (!existing) await db.insert(t.agents).values(a);
+  }
+
+  // ---- manual skills for the Test Quality Reviewer (skills feature demo) ----
+  const seedSkills: Array<typeof t.skills.$inferInsert> = [
+    {
+      workspaceId,
+      name: 'branch-coverage-gate',
+      description:
+        'Requires every added conditional branch to have a corresponding test case.',
+      type: 'rubric',
+      source: 'manual',
+      enabled: true,
+      version: 1,
+      body: BRANCH_COVERAGE_GATE_BODY,
+    },
+    {
+      workspaceId,
+      name: 'corner-case-checklist',
+      description:
+        'Checklist of common corner cases (empty input, null, boundary values, concurrent access) to check for.',
+      type: 'convention',
+      source: 'manual',
+      enabled: true,
+      version: 1,
+      body: CORNER_CASE_CHECKLIST_BODY,
+    },
+    {
+      workspaceId,
+      name: 'mock-overuse-gate',
+      description:
+        'Flags tests that mock so much of the system under test that they no longer exercise real logic.',
+      type: 'custom',
+      source: 'manual',
+      enabled: true,
+      version: 1,
+      body: MOCK_OVERUSE_GATE_BODY,
+    },
+  ];
+
+  const skillIdsByName = new Map<string, string>();
+  for (const s of seedSkills) {
+    let [existing] = await db
+      .select()
+      .from(t.skills)
+      .where(and(eq(t.skills.workspaceId, workspaceId), eq(t.skills.name, s.name)));
+    if (!existing) {
+      [existing] = await db.insert(t.skills).values(s).returning();
+      await db
+        .insert(t.skillVersions)
+        .values({ skillId: existing!.id, version: 1, body: s.body })
+        .onConflictDoNothing();
+    }
+    skillIdsByName.set(s.name, existing!.id);
+  }
+
+  // ---- link the 3 manual skills to Test Quality Reviewer, order = index ----
+  const [testQualityAgent] = await db
+    .select()
+    .from(t.agents)
+    .where(and(eq(t.agents.workspaceId, workspaceId), eq(t.agents.name, 'Test Quality Reviewer')));
+  if (testQualityAgent) {
+    const linkOrder = ['branch-coverage-gate', 'corner-case-checklist', 'mock-overuse-gate'];
+    for (const [index, name] of linkOrder.entries()) {
+      const skillId = skillIdsByName.get(name);
+      if (!skillId) continue;
+      await db
+        .insert(t.agentSkills)
+        .values({ agentId: testQualityAgent.id, skillId, order: index })
+        .onConflictDoNothing();
+    }
   }
 
   return { workspaceId, userId };

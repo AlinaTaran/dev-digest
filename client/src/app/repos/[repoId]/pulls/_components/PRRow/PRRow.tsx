@@ -10,7 +10,7 @@ import { SIZE_COLOR, STATUS_META } from "../../constants";
 import { relativeTime, sizeOf } from "../../helpers";
 import { s } from "../../styles";
 import { formatCost } from "@/lib/format";
-import { FindingsPopover } from "../FindingsPopover";
+import { FindingsPopover } from "../FindingsPopover/FindingsPopover";
 
 export function PRRow({
   pr,

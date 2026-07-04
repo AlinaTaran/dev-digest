@@ -7,6 +7,7 @@
     "searchPlaceholder": "Search skills…",
     "loadError": "Could not load skills.",
     "menu": {
+      "createFromScratch": "Create from scratch",
       "fromFile": "Import from file",
       "fromUrl": "Import from URL",
       "community": "Search community skills…"
@@ -25,14 +26,64 @@
     "crumbSkill": "Skill",
     "back": "← All skills",
     "loadError": "Could not load this skill.",
+    "loadErrorTitle": "Couldn’t load this skill",
     "notFound": {
       "title": "Skill not found",
       "body": "It may have been deleted."
     }
   },
+  "card": {
+    "noDescription": "No description",
+    "agentCount": "{count} agents"
+  },
+  "create": {
+    "title": "Create skill",
+    "subtitle": "A skill is a reusable Markdown instruction block, attached (in order) to review agents.",
+    "cancel": "Cancel",
+    "create": "Create skill",
+    "creating": "Creating…",
+    "defaultName": "New Skill",
+    "defaultBody": "# Rule\nDescribe the rule the reviewing agent should follow…",
+    "fields": {
+      "name": "Name",
+      "namePlaceholder": "branch-coverage-gate",
+      "description": "Description",
+      "descriptionPlaceholder": "What this skill checks for",
+      "type": "Type",
+      "body": "Body (Markdown)",
+      "bodyHint": "Written as a directive — this is read by an LLM as instructions, not documentation."
+    }
+  },
+  "editor": {
+    "disabled": "disabled",
+    "tabs": {
+      "config": "Config",
+      "preview": "Preview",
+      "versions": "Versions",
+      "stats": "Stats",
+      "evals": "Evals"
+    }
+  },
+  "config": {
+    "title": "Configuration",
+    "enabled": "Enabled",
+    "name": "Name",
+    "description": "Description",
+    "descriptionHint": "Shown on the skill card and in the agent Skills tab.",
+    "type": "Type",
+    "bodyFileName": "{name}.md",
+    "bodyHint": "Written as a directive — this is read by an LLM as instructions, appended to a linked agent's prompt.",
+    "unsaved": "unsaved",
+    "approxTokens": "~{count} tokens",
+    "save": "Save skill",
+    "saving": "Saving…",
+    "saved": "Saved (v{version})",
+    "savedToast": "Skill saved (v{version})"
+  },
   "drawer": {
     "title": "Add a skill",
     "subtitle": "Import from a file, a URL, or search vetted community skills",
+    "fileOnlySubtitle": "Import a skill from a .md or .zip file. Read-only extraction — nothing in the file is ever executed.",
     "tabs": {
       "file": "From file",
       "url": "From URL",
@@ -44,9 +95,20 @@
     "nameLabel": "Skill name",
     "nameHint": "Optional — derived from the first heading if blank.",
     "namePlaceholder": "pr-quality-rubric",
+    "descriptionLabel": "Description",
+    "typeLabel": "Type",
     "bodyLabel": "Skill body (Markdown)",
     "bodyHint": "Pasted content is wrapped as untrusted data — never executed as instructions.",
     "bodyPlaceholder": "# Rule\nDescribe the rule…",
+    "pickLabel": "Choose file (.md or .zip)",
+    "pickHint": "SKILL.md (or the first *.md found in a .zip) is parsed for name/description/type/body. Every other file in a .zip is listed as ignored and never executed.",
+    "importingPreview": "Extracting…",
+    "previewNotice": "Preview only — nothing is saved yet. Review and edit before confirming; the skill is created disabled until you vet it.",
+    "ignoredTitle": "Not imported",
+    "ignoredHint": "Read into memory to report here — never executed, written to disk, or included in the skill body.",
+    "chooseAnother": "Choose a different file",
+    "confirm": "Add skill",
+    "confirming": "Adding…",
     "importing": "Importing…",
     "import": "Import skill",
     "success": "Imported \"{name}\" (stored as untrusted data)."
@@ -88,6 +150,8 @@
     }
   },
   "preview": {
+    "heading": "Preview",
+    "subheading": "Rendered as the reviewing agent receives it.",
     "untrustedBadge": "untrusted source",
     "enabled": "Enabled",
     "disabled": "Disabled",
@@ -97,5 +161,35 @@
     "bodyLabel": "Skill body (Markdown)",
     "bodyHint": "Saving a changed body creates a new immutable version.",
     "version": "v{version}"
+  },
+  "versions": {
+    "heading": "Version history",
+    "count": "{count} versions",
+    "subtitle": "Every save snapshots the body so you can diff or restore any earlier version.",
+    "empty": "No versions yet.",
+    "loadError": "Could not load version history.",
+    "current": "Current",
+    "restore": "Restore",
+    "restored": "Restored as v{version}",
+    "versionOption": "v{version}",
+    "diff": "Diff",
+    "hideDiff": "Hide",
+    "diffHeading": "Diff",
+    "vs": "vs"
+  },
+  "stats": {
+    "loadError": "Could not load stats for this skill.",
+    "usedBy": "Used by",
+    "usedByTile": "USED BY",
+    "findingsTile": "FINDINGS",
+    "agentsHeading": "Agents using this skill",
+    "noAgents": "No agents are using this skill yet.",
+    "open": "Open",
+    "categoryHeading": "Findings by category",
+    "noFindings": "No findings yet from reviews using this skill."
+  },
+  "evals": {
+    "comingSoonTitle": "Evals coming soon",
+    "comingSoonBody": "Recall/precision/citation-accuracy trace runs for this skill land in a later lesson."
   }
 }

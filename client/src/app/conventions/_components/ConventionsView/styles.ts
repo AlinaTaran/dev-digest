@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 
 /** Co-located styles for ConventionsView. */
 export const s = {
+  page: { padding: "24px 32px 44px", maxWidth: 1100, margin: "0 auto" } satisfies CSSProperties,
   pageHeader: {
     display: "flex",
     alignItems: "flex-start",

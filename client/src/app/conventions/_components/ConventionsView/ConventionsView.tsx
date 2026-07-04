@@ -59,79 +59,81 @@ export function ConventionsView() {
 
   return (
     <AppShell crumb={[{ label: t("page.crumbLab") }, { label: t("page.crumbConventions") }]}>
-      <div style={s.pageHeader}>
-        <div>
-          <h1 style={s.pageTitle}>
-            {t("page.headingPrefix")}
-            <span style={s.pageTitleRepo}>{activeRepo?.name ?? t("page.repoFallback")}</span>
-          </h1>
-          <p style={s.pageSubtitle}>
-            {candidates ? t("page.candidateCount", { count: list.length }) : t("page.scanning")}
-          </p>
-        </div>
-        <div style={s.headerActions}>
-          <Button kind="secondary" icon="RefreshCw" onClick={() => extract.mutate()} loading={extract.isPending}>
-            {t("page.rescan")}
-          </Button>
-        </div>
-      </div>
-
-      {extract.isError && <div style={s.banner}>{t("page.extractionFailed")}</div>}
-
-      {isLoading ? (
-        <div style={s.loadingStack}>
-          {Array.from({ length: SKELETON_ROWS }).map((_, i) => (
-            <Skeleton key={i} height={96} />
-          ))}
-        </div>
-      ) : isError ? (
-        <ErrorState
-          title={t("page.loadError")}
-          body={error instanceof ApiError ? error.message : undefined}
-          onRetry={() => refetch()}
-        />
-      ) : list.length === 0 ? (
-        <EmptyState
-          icon="ListChecks"
-          title={t("page.empty.title")}
-          body={t("page.empty.body")}
-          cta={t("page.empty.cta")}
-          onCta={() => extract.mutate()}
-          ctaLoading={extract.isPending}
-        />
-      ) : (
-        <>
-          <div style={s.toolbar}>
-            <Button
-              kind="ghost"
-              size="sm"
-              icon="X"
-              disabled={!canDeselect || isDeselecting}
-              onClick={deselectAll}
-            >
-              {t("toolbar.deselectAll")}
-            </Button>
-            <span style={s.acceptedCount}>
-              {t("toolbar.acceptedCount", { accepted: acceptedCandidates.length, total: list.length })}
-            </span>
-            <Button
-              kind="primary"
-              size="sm"
-              icon="Sparkles"
-              disabled={acceptedCandidates.length === 0}
-              onClick={() => setShowCreateSkill(true)}
-            >
-              {t("toolbar.createSkill")}
+      <div style={s.page}>
+        <div style={s.pageHeader}>
+          <div>
+            <h1 style={s.pageTitle}>
+              {t("page.headingPrefix")}
+              <span style={s.pageTitleRepo}>{activeRepo?.name ?? t("page.repoFallback")}</span>
+            </h1>
+            <p style={s.pageSubtitle}>
+              {candidates ? t("page.candidateCount", { count: list.length }) : t("page.scanning")}
+            </p>
+          </div>
+          <div style={s.headerActions}>
+            <Button kind="secondary" icon="RefreshCw" onClick={() => extract.mutate()} loading={extract.isPending}>
+              {t("page.rescan")}
             </Button>
           </div>
+        </div>
 
-          <div style={s.list}>
-            {list.map((candidate) => (
-              <ConventionCandidateCard key={candidate.id} candidate={candidate} repoId={repoId} />
+        {extract.isError && <div style={s.banner}>{t("page.extractionFailed")}</div>}
+
+        {isLoading ? (
+          <div style={s.loadingStack}>
+            {Array.from({ length: SKELETON_ROWS }).map((_, i) => (
+              <Skeleton key={i} height={96} />
             ))}
           </div>
-        </>
-      )}
+        ) : isError ? (
+          <ErrorState
+            title={t("page.loadError")}
+            body={error instanceof ApiError ? error.message : undefined}
+            onRetry={() => refetch()}
+          />
+        ) : list.length === 0 ? (
+          <EmptyState
+            icon="ListChecks"
+            title={t("page.empty.title")}
+            body={t("page.empty.body")}
+            cta={t("page.empty.cta")}
+            onCta={() => extract.mutate()}
+            ctaLoading={extract.isPending}
+          />
+        ) : (
+          <>
+            <div style={s.toolbar}>
+              <Button
+                kind="ghost"
+                size="sm"
+                icon="X"
+                disabled={!canDeselect || isDeselecting}
+                onClick={deselectAll}
+              >
+                {t("toolbar.deselectAll")}
+              </Button>
+              <span style={s.acceptedCount}>
+                {t("toolbar.acceptedCount", { accepted: acceptedCandidates.length, total: list.length })}
+              </span>
+              <Button
+                kind="primary"
+                size="sm"
+                icon="Sparkles"
+                disabled={acceptedCandidates.length === 0}
+                onClick={() => setShowCreateSkill(true)}
+              >
+                {t("toolbar.createSkill")}
+              </Button>
+            </div>
+
+            <div style={s.list}>
+              {list.map((candidate) => (
+                <ConventionCandidateCard key={candidate.id} candidate={candidate} repoId={repoId} />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
 
       {showCreateSkill && (
         <CreateSkillFromConventionsModal

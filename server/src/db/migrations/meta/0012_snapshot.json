@@ -1,6 +1,6 @@
 {
-  "id": "359abaf2-b32e-4a2a-bd9b-fa8cbf7889cc",
-  "prevId": "114734d2-4262-4b1d-a9b2-62074e03ba64",
+  "id": "3fd508bc-ea1f-40c6-8062-6ec682fd2719",
+  "prevId": "805fad64-c9d6-43c3-9fe6-b85c3dbb0046",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1502,13 +1502,6 @@
           "type": "double precision",
           "primaryKey": false,
           "notNull": false
-        },
-        "accepted": {
-          "name": "accepted",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
         },
         "status": {
           "name": "status",

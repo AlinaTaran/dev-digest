@@ -1,1 +1,0 @@
-ALTER TABLE "conventions" ALTER COLUMN "category" SET DEFAULT 'uncategorized';

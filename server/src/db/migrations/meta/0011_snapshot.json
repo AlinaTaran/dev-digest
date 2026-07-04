@@ -1,5 +1,5 @@
 {
-  "id": "114734d2-4262-4b1d-a9b2-62074e03ba64",
+  "id": "805fad64-c9d6-43c3-9fe6-b85c3dbb0046",
   "prevId": "746b550c-a75b-4d5e-9be7-b5f6587219d8",
   "version": "7",
   "dialect": "postgresql",
@@ -1466,27 +1466,9 @@
           "primaryKey": false,
           "notNull": true
         },
-        "category": {
-          "name": "category",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
         "evidence_path": {
           "name": "evidence_path",
           "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "evidence_line_start": {
-          "name": "evidence_line_start",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "evidence_line_end": {
-          "name": "evidence_line_end",
-          "type": "integer",
           "primaryKey": false,
           "notNull": false
         },
@@ -1501,20 +1483,6 @@
           "type": "double precision",
           "primaryKey": false,
           "notNull": false
-        },
-        "accepted": {
-          "name": "accepted",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'pending'"
         }
       },
       "indexes": {},

@@ -1,6 +1,6 @@
 import type { Container } from '../../platform/container.js';
 import type { Provider, Review, RunTrace, UnifiedDiff } from '@devdigest/shared';
-import { reviewPullRequest, countBlockers } from '@devdigest/reviewer-core';
+import { reviewPullRequest, countBlockers, wrapUntrusted } from '@devdigest/reviewer-core';
 import { RunLogger } from '../../platform/run-logger.js';
 import * as schema from '../../db/schema.js';
 import type { AgentRow } from '../../db/rows.js';
@@ -183,6 +183,19 @@ export class ReviewRunExecutor {
 
       const task = taskLine(pull) + rankNote;
 
+      // Skills attached to this agent (Agent editor "Skills" tab), in link
+      // order. Disabled skills are dropped; imported (non-manual) skill bodies
+      // are wrapped as untrusted content (vet-before-trust) while manual skills
+      // are injected verbatim.
+      const linked = await this.agents.linkedSkills(agent.id);
+      const skillBodies = linked
+        .filter((l) => l.skill.enabled)
+        .map((l) =>
+          l.skill.source === 'manual'
+            ? l.skill.body
+            : wrapUntrusted(`skill:${l.skill.name}`, l.skill.body),
+        );
+
       // ---- Engine: assemble → single-pass → grounding -----------------------
       // The pure review pipeline lives in @devdigest/reviewer-core (shared with
       // the CI runner). The service owns only I/O: repo-intel context resolution
@@ -203,6 +216,9 @@ export class ReviewRunExecutor {
         // PR author's description/body — untrusted; assemblePrompt wraps +
         // truncates it. Omitted when the PR has no body.
         ...(pull.body ? { prDescription: pull.body } : {}),
+        // Agent's linked, enabled skills — rendered as a "## Skills / rules"
+        // block. Omitted entirely when the agent has no skills attached.
+        ...(skillBodies.length ? { skills: skillBodies } : {}),
         task,
         sessionId: `${repo.owner}/${repo.name}#${pull.number}:${agent.name}`,
         onEvent: (e) => runLog.event(e.kind, e.msg, e.data),

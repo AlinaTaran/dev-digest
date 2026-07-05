@@ -159,3 +159,40 @@ Postgres); everything else is hermetic. The browser e2e flows live in
   make sure migrations ran against the Dockerized DB, not a different one.
 - **Reset everything** — `docker compose down -v` drops the volume, then re-run
   `./scripts/dev.sh`.
+
+## Backend architecture — Onion
+
+The backend follows **Onion / hexagonal architecture**: dependencies point inward.
+The domain (module `service.ts` files and all of `reviewer-core`) knows nothing
+about Drizzle, Fastify, GitHub, or the network — every external call sits behind a
+**port** (`server/src/vendor/shared/adapters.ts`) wired to a concrete adapter only
+in the **DI container** (`server/src/platform/container.ts`).
+
+The rules and a runnable `dependency-cruiser` boundary gate live in the
+**`onion-architecture` skill** (`.claude/skills/onion-architecture/`) — agents load
+it when touching backend code, and you can run the gate manually (see the skill's
+"Enforce it" section).
+
+**References**
+
+*Onion Architecture fundamentals*
+- Jeffrey Palermo — [The Onion Architecture, Part 1 (origin)](https://jeffreypalermo.com/2008/07/the-onion-architecture-part-1/)
+- NDepend — [Onion Architecture: Going Beyond Layers](https://blog.ndepend.com/onion-architecture-layers/)
+- Herberto Graça — [Onion Architecture (Software Architecture Chronicles)](https://medium.com/the-software-architecture-chronicles/onion-architecture-79529d127f85)
+- allegro.tech — [Onion Architecture](https://blog.allegro.tech/2023/02/onion-architecture.html)
+
+*Onion / Clean in Node.js + TypeScript*
+- Remo Jansen — [SOLID + Onion in Node.js with TypeScript](https://dev.to/remojansen/implementing-the-onion-architecture-in-nodejs-with-typescript-and-inversifyjs-10ad)
+- André Bazaglia — [Clean Architecture with TypeScript: DDD, Onion](https://bazaglia.com/clean-architecture-with-typescript-ddd-onion/)
+- Khalil Stemmler — [Clean Node.js Architecture](https://khalilstemmler.com/articles/enterprise-typescript-nodejs/clean-nodejs-architecture/)
+- Sairyss — [domain-driven-hexagon (reference repo)](https://github.com/sairyss/domain-driven-hexagon)
+
+*Enforcement (dependency-cruiser)*
+- [dependency-cruiser (GitHub)](https://github.com/sverweij/dependency-cruiser)
+- [Avoid cross-module dependencies with dependency-cruiser](https://dev.to/jacobandrewsky/avoid-cross-module-dependencies-with-dependency-cruiser-3b0b)
+- [Restrict imports in JavaScript with Dependency Cruiser (Atomic Object)](https://spin.atomicobject.com/dependency-cruiser-imports/)
+
+*Tool-specific practices*
+- [Fastify clean-architecture template (revell29)](https://github.com/revell29/fastify-clean-architecture)
+- [Repository pattern with Drizzle ORM](https://medium.com/@vimulatus/repository-pattern-in-nest-js-with-drizzle-orm-e848aa75ecae)
+- [Cosmic Python — Repository Pattern](https://www.cosmicpython.com/book/chapter_02_repository.html)

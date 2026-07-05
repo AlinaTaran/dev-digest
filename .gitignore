@@ -23,3 +23,7 @@ test-results/
 
 # emdash worktree config (local)
 .emdash.json
+
+# pr-self-review runtime report (regenerated per branch diff; not committed).
+# The waivers file IS committed — it records intentional, reviewed exceptions.
+.claude/pr-self-review-report.json

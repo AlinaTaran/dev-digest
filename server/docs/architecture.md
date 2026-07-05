@@ -1,7 +1,7 @@
 # server — architecture notes
 
 Design rationale for `@devdigest/api`. For commands, conventions, and gotchas see
-`server/CLAUDE.md`; for product-behavior contracts see `server/specs/`.
+`server/AGENTS.md`; for product-behavior contracts see `server/specs/`.
 
 ## Layering: routes → services → repositories
 
@@ -49,4 +49,4 @@ exist` error at runtime means migrations weren't applied.
 
 `*.it.test.ts` integration tests need Docker (testcontainers) and are excluded from the
 unit lane. The unit lane is hermetic. CI invokes the split via `pnpm exec vitest run …`
-(see `server/CLAUDE.md` and `TESTING.md`).
+(see `server/AGENTS.md` and `TESTING.md`).

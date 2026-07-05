@@ -1,7 +1,7 @@
 # client — component architecture
 
 Design rationale for `@devdigest/web`. For commands, conventions, and gotchas see
-`client/CLAUDE.md`; for screen/behavior contracts see `client/specs/`.
+`client/AGENTS.md`; for screen/behavior contracts see `client/specs/`.
 
 ## Thin pages, fat views
 

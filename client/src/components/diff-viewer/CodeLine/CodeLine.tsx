@@ -6,8 +6,8 @@ import React from "react";
 import { commentTargetFor, type CommentThread, type DiffCommentApi, cs } from "../comments";
 import { type Line } from "../helpers";
 import { s, lineRowFor, lineSignFor } from "../styles";
-import { CommentThreadView } from "../CommentThreadView";
-import { InlineComposer } from "../InlineComposer";
+import { CommentThreadView } from "../CommentThreadView/CommentThreadView";
+import { InlineComposer } from "../InlineComposer/InlineComposer";
 
 export function CodeLine({
   ln,
@@ -42,7 +42,7 @@ export function CodeLine({
       onMouseLeave={() => setHover(false)}
     >
       <div style={lineRowFor(ln.kind)}>
-        <span className="mono tnum" style={{ ...s.lineNo, position: "relative" }}>
+        <span className="mono tnum" style={s.lineNo}>
           {showAdd && target && (
             <button
               type="button"

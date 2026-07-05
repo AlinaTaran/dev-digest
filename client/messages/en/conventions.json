@@ -19,8 +19,46 @@
   },
   "card": {
     "confidence": "Confidence",
+    "accept": "Accept",
     "accepted": "Accepted",
     "accepting": "Accepting…",
-    "acceptAsSkill": "Accept as Skill"
+    "reject": "Reject",
+    "rejected": "Rejected",
+    "rejecting": "Rejecting…",
+    "acceptAsSkill": "Accept as Skill",
+    "editRule": "Edit rule",
+    "copySnippet": "Copy snippet",
+    "copied": "Copied"
+  },
+  "toolbar": {
+    "deselectAll": "Deselect all",
+    "acceptedCount": "{accepted} of {total} accepted",
+    "createSkill": "Create skill"
+  },
+  "createSkillModal": {
+    "title": "Create skill from conventions",
+    "mergedBanner": "Merged from {count, plural, one {# accepted convention} other {# accepted conventions}} in {repoName}. Everything below is editable before you save.",
+    "enabledLabel": "Enabled",
+    "enabledHint": "Whether this block is added to agents' prompts.",
+    "tokenCount": "~{count} tokens",
+    "unsaved": "unsaved",
+    "defaultDescription": "{count, plural, one {# house convention} other {# house conventions}} extracted from {repoName}.",
+    "fields": {
+      "name": "Name",
+      "description": "Description",
+      "type": "Type",
+      "body": "Body",
+      "bodyFileName": "{name}.md",
+      "bodyHint": "Markdown, one section per rule with its evidence — edit before creating."
+    },
+    "typeOptions": {
+      "rubric": "Rubric",
+      "convention": "Convention",
+      "security": "Security",
+      "custom": "Custom"
+    },
+    "cancel": "Cancel",
+    "create": "Create skill",
+    "creating": "Creating…"
   }
 }

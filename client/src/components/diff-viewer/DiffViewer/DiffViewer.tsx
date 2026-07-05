@@ -9,7 +9,7 @@ import { useTranslations } from "next-intl";
 import type { PrFile } from "@/lib/types";
 import { type DiffCommentApi } from "../comments";
 import { s } from "../styles";
-import { FileCard } from "../FileCard";
+import { FileCard } from "../FileCard/FileCard";
 
 export function DiffViewer({
   files,
@@ -24,8 +24,8 @@ export function DiffViewer({
   }
   return (
     <div style={s.list}>
-      {files.map((f, i) => (
-        <FileCard key={i} file={f} commenting={commenting} />
+      {files.map((f) => (
+        <FileCard key={f.path} file={f} commenting={commenting} />
       ))}
     </div>
   );

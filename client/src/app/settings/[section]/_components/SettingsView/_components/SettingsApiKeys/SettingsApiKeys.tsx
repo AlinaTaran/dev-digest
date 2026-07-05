@@ -6,7 +6,7 @@ import { Button, Icon, FormField, TextInput } from "@devdigest/ui";
 import { useTestConnection, useSecretsStatus } from "../../../../../../../lib/hooks";
 import { ApiError } from "../../../../../../../lib/api";
 import type { ConnTestProvider } from "../../../../../../../lib/types";
-import { SectionTitle } from "../SectionTitle";
+import { SectionTitle } from "../SectionTitle/SectionTitle";
 import { KEY_ROWS } from "./constants";
 import { s } from "./styles";
 

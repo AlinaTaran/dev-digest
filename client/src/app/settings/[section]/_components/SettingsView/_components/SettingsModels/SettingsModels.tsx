@@ -8,7 +8,7 @@ import { useProviderModels } from "../../../../../../../lib/hooks/agents";
 import { toModelOptions } from "../../../../../../../lib/model-label";
 import { FEATURE_MODELS } from "../../../../../../../lib/feature-models";
 import type { FeatureModelChoice, FeatureModelId } from "../../../../../../../lib/types";
-import { SectionTitle } from "../SectionTitle";
+import { SectionTitle } from "../SectionTitle/SectionTitle";
 import { s } from "./styles";
 
 /**

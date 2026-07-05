@@ -1,23 +1,20 @@
 "use client";
 
-import React, { useCallback } from "react";
+import React from "react";
 import { Icon, Badge, Button, SectionLabel, EmptyState } from "@devdigest/ui";
-import { RunStatus } from "../RunStatus";
+import { RunStatus } from "../RunStatus/RunStatus";
 import { RunHistory } from "../RunHistory/RunHistory";
-import { ReviewRunAccordion } from "../ReviewRunAccordion";
+import { ReviewRunAccordion } from "../ReviewRunAccordion/ReviewRunAccordion";
+import { useCancelRun } from "@/lib/hooks/reviews";
 import { s } from "./styles";
-import type { FindingRecord, ReviewRecord, RunSummary, PrCommit } from "@devdigest/shared";
-import type { UseMutationResult } from "@tanstack/react-query";
+import type { ReviewRecord, RunSummary, PrCommit } from "@devdigest/shared";
 
 interface FindingsTabProps {
   prId: string | null;
   liveRunIds: string[];
-  reviewRunning: boolean;
-  lethalTrifecta: FindingRecord[];
   runs: ReviewRecord[];
   prRuns: RunSummary[] | undefined;
   prCommits: PrCommit[];
-  cancelMutation: UseMutationResult<any, any, string, any>;
   /** owner/repo + head sha — used to deep-link a finding's file:line to GitHub. */
   repoFullName?: string | null;
   headSha?: string | null;
@@ -29,47 +26,34 @@ interface FindingsTabProps {
 export function FindingsTab({
   prId,
   liveRunIds,
-  reviewRunning,
-  lethalTrifecta,
   runs,
   prRuns,
   prCommits,
-  cancelMutation,
   repoFullName,
   headSha,
   onOpenTrace,
   onDelete,
   onRunDone,
 }: FindingsTabProps) {
-  const handleCancelAll = useCallback(() => {
-    liveRunIds.forEach((id) => cancelMutation.mutate(id));
-  }, [liveRunIds, cancelMutation]);
+  // Cancelling a live run is this tab's concern — own the mutation here rather
+  // than threading a UseMutationResult down as a prop.
+  const cancel = useCancelRun();
+  const reviewRunning = liveRunIds.length > 0;
+  const lethalTrifecta = runs
+    .flatMap((r) => r.findings)
+    .filter((f) => f.kind === "lethal_trifecta");
 
-  const handleOpenFirstTrace = useCallback(() => {
+  const handleCancelAll = () => liveRunIds.forEach((id) => cancel.mutate(id));
+  const handleOpenFirstTrace = () => {
     if (liveRunIds[0]) onOpenTrace(liveRunIds[0]);
-  }, [liveRunIds, onOpenTrace]);
-
-  const handleOpenTrace = useCallback(
-    (id: string) => {
-      onOpenTrace(id);
-    },
-    [onOpenTrace],
-  );
-
-  const handleDelete = useCallback(
-    (id: string) => {
-      onDelete(id);
-    },
-    [onDelete],
-  );
+  };
 
   // Timeline → Review-runs navigation: clicking an agent name in the timeline
   // opens + scrolls to that run's accordion below. The nonce re-triggers the
   // scroll even when the same run is clicked twice.
   const [target, setTarget] = React.useState<{ runId: string; n: number } | null>(null);
-  const handleGoToReview = useCallback((runId: string) => {
+  const handleGoToReview = (runId: string) =>
     setTarget((p) => ({ runId, n: (p?.n ?? 0) + 1 }));
-  }, []);
 
   // Findings per run, so the timeline can preview them on hover. Reviews are
   // already loaded here (each review = one run), keyed by run_id.
@@ -93,7 +77,7 @@ export function FindingsTab({
                   kind="danger"
                   size="sm"
                   icon="X"
-                  loading={cancelMutation.isPending}
+                  loading={cancel.isPending}
                   onClick={handleCancelAll}
                 >
                   Cancel
@@ -144,9 +128,9 @@ export function FindingsTab({
             findingsByRun={findingsByRun}
             repoFullName={repoFullName}
             headSha={headSha}
-            onOpenTrace={handleOpenTrace}
+            onOpenTrace={onOpenTrace}
             onGoToReview={handleGoToReview}
-            onDelete={handleDelete}
+            onDelete={onDelete}
           />
         </div>
       )}

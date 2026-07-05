@@ -1,5 +1,6 @@
 /* PR list — /repos/:repoId/pulls. Ported from screen_dashboard.jsx; fetches
-   GET /repos/:id/pulls (F1). Filters/sort live in query (?status&sort). */
+   GET /repos/:id/pulls (F1). View state (search/status/sort) lives in the URL
+   (?q&status&sort) so it survives reload/back and is shareable. */
 "use client";
 
 import React from "react";
@@ -18,8 +19,8 @@ import { useActiveRepo, useRepoNotFound } from "@/lib/repo-context";
 import { ApiError } from "@/lib/api";
 import { COLUMN_KEYS, SKELETON_ROWS } from "./constants";
 import { s } from "./styles";
-import { PRRow } from "./_components/PRRow";
-import { FilterBar } from "./_components/FilterBar";
+import { PRRow } from "./_components/PRRow/PRRow";
+import { FilterBar } from "./_components/FilterBar/FilterBar";
 
 /** Open PRs carry a derived review status; everything else is merged/closed. */
 const OPEN_STATUSES = new Set(["needs_review", "reviewed", "stale"]);
@@ -35,16 +36,23 @@ export default function PullsPage() {
   const { data: pulls, isLoading, isError, error, refetch } = usePulls(repoId);
   const refresh = useRefreshRepo();
 
-  // Default to "needs review" — the most actionable filter on open.
-  const status = search.get("status") ?? "needs_review";
-  const setStatus = (k: string) => {
+  // All view state lives in the URL. Setting a key to its default removes it so
+  // the URL stays clean; reads fall back to the default.
+  const setParam = (key: string, value: string, defaultValue?: string) => {
     const sp = new URLSearchParams(search.toString());
-    sp.set("status", k); // always explicit so "all" sticks over the needs_review default
+    if (defaultValue !== undefined && value === defaultValue) sp.delete(key);
+    else sp.set(key, value);
     router.replace(`/repos/${repoId}/pulls?${sp.toString()}`);
   };
 
-  const [query, setQuery] = React.useState("");
-  const [sort, setSort] = React.useState("newest");
+  // Default to "needs review" — the most actionable filter on open. Set is always
+  // explicit (no default arg) so "all" sticks over the needs_review read default.
+  const status = search.get("status") ?? "needs_review";
+  const setStatus = (k: string) => setParam("status", k);
+  const query = search.get("q") ?? "";
+  const setQuery = (v: string) => setParam("q", v, "");
+  const sort = search.get("sort") ?? "newest";
+  const setSort = (v: string) => setParam("sort", v, "newest");
 
   const q = query.trim().toLowerCase();
   const filtered = (pulls ?? [])

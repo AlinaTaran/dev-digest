@@ -1,7 +1,7 @@
 # reviewer-core — design rationale
 
 Why the review engine is shaped the way it is. For the *what* (commands, conventions,
-gotchas) see `reviewer-core/CLAUDE.md`; for behavior contracts see `reviewer-core/specs/`.
+gotchas) see `reviewer-core/AGENTS.md`; for behavior contracts see `reviewer-core/specs/`.
 
 ## The engine is pure
 

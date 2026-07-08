@@ -21,6 +21,8 @@ export const BOILERPLATE_PATTERNS: RegExp[] = [
   /\.spec\.[^/]+$/,
   /(^|\/)test\//,
   /(^|\/)__tests__\//,
+  /\.sql$/,
+  /(^|\/)migrations?\//,
 ];
 
 /** Globs/substrings that mark a file as app wiring/config — hooks core into the app. */

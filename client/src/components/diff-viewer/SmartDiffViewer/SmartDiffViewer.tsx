@@ -23,6 +23,7 @@ export function SmartDiffViewer({
   findingsByPath,
   commenting,
   grouped = true,
+  onFindingClick,
 }: {
   smartDiff: SmartDiff;
   files: PrFile[];
@@ -30,6 +31,8 @@ export function SmartDiffViewer({
   commenting?: DiffCommentApi;
   /** false renders the same cards flat, in `files` (PR) order — "Original order". */
   grouped?: boolean;
+  /** Clicking a code-line severity chip jumps to that finding in "Agent runs". */
+  onFindingClick?: (findingId: string) => void;
 }) {
   const t = useTranslations("smart-diff");
 
@@ -55,6 +58,7 @@ export function SmartDiffViewer({
         defaultOpen={role === "core" || findings.length > 0}
         findingsLabel={findings.length > 0 ? t("findingsBadge", { count: findings.length }) : undefined}
         mechanicalPlaceholderText={t("mechanicalPlaceholder")}
+        onFindingClick={onFindingClick}
       />
     );
   }

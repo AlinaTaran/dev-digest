@@ -78,7 +78,11 @@ const SMART_DIFF: SmartDiff = {
   split_suggestion: { too_big: false, total_lines: 0, proposed_splits: [] },
 };
 
-function renderViewer(findingsByPath: Map<string, Finding[]>, grouped = true) {
+function renderViewer(
+  findingsByPath: Map<string, Finding[]>,
+  grouped = true,
+  onFindingClick?: (id: string) => void,
+) {
   return render(
     <NextIntlClientProvider locale="en" messages={{ "smart-diff": smartDiffMessages, shell: shellMessages }}>
       <SmartDiffViewer
@@ -86,6 +90,7 @@ function renderViewer(findingsByPath: Map<string, Finding[]>, grouped = true) {
         files={FILES}
         findingsByPath={findingsByPath}
         grouped={grouped}
+        onFindingClick={onFindingClick}
       />
     </NextIntlClientProvider>,
   );
@@ -114,6 +119,32 @@ describe("SmartDiffViewer", () => {
     fireEvent.click(badge);
     expect(screen.getByText("const secret = 'shh';")).toBeInTheDocument();
     expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+  });
+
+  it("without onFindingClick the severity chip is a static span, not a button", () => {
+    renderViewer(new Map<string, Finding[]>([["src/config.ts", [FINDING]]]));
+    expect(screen.getByText("blocker")).toBeInTheDocument();
+    // The only button named for finding-navigation should be absent.
+    expect(
+      screen.queryByRole("button", { name: "Go to this finding in Agent runs" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("with onFindingClick the chip becomes a button that reports the highest-severity finding's id", () => {
+    const onFindingClick = vi.fn();
+    // Two findings share line 2 of src/config.ts: a WARNING and a CRITICAL. The
+    // chip (and thus the click) must resolve to the CRITICAL one (id "f1").
+    const lowerOnSameLine: Finding = { ...FINDING, id: "f2", severity: "WARNING", title: "Lower" };
+    renderViewer(
+      new Map<string, Finding[]>([["src/config.ts", [lowerOnSameLine, FINDING]]]),
+      true,
+      onFindingClick,
+    );
+
+    const chip = screen.getByRole("button", { name: "Go to this finding in Agent runs" });
+    expect(chip).toHaveTextContent("blocker"); // CRITICAL wins the line
+    fireEvent.click(chip);
+    expect(onFindingClick).toHaveBeenCalledWith("f1");
   });
 
   it("renders the same enhanced cards flat, in the PR's own file order, when ungrouped", () => {

@@ -7,6 +7,9 @@ import { FindingCard } from "./FindingCard";
 
 afterEach(cleanup);
 
+// jsdom doesn't implement scrollIntoView — the target-finding effect calls it.
+Element.prototype.scrollIntoView = vi.fn();
+
 const FINDING: FindingRecord = {
   id: "f1",
   severity: "CRITICAL",
@@ -47,6 +50,21 @@ describe("FindingCard (smoke, both themes)", () => {
       // category label is shown alongside the severity badge
       expect(screen.getByText("security")).toBeInTheDocument();
     });
+  });
+
+  it("auto-expands + scrolls when it is the navigation target, and stays collapsed otherwise", () => {
+    // Non-matching target: card stays collapsed (Accept only renders when expanded).
+    const { rerender } = renderWithIntl(<FindingCard f={FINDING} targetFindingId="other" />);
+    expect(screen.queryByText("Accept")).not.toBeInTheDocument();
+
+    // Matching target: expands and scrolls into view.
+    rerender(
+      <NextIntlClientProvider locale="en" messages={{ prReview: messages }}>
+        <FindingCard f={FINDING} targetFindingId="f1" />
+      </NextIntlClientProvider>,
+    );
+    expect(screen.getByText("Accept")).toBeInTheDocument();
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
   });
 
   it("fires accept/dismiss actions", () => {

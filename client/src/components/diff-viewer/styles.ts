@@ -155,6 +155,19 @@ export function severityChipFor(color: string, bg: string): CSSProperties {
   return { ...s.severityChip, color, background: bg };
 }
 
+/** Clickable variant of the severity chip — a `<button>` that jumps to the
+ *  finding in "Agent runs". Resets the browser's default button chrome so it
+ *  looks identical to the static chip. */
+export function severityChipButtonFor(color: string, bg: string): CSSProperties {
+  return {
+    ...severityChipFor(color, bg),
+    border: "none",
+    cursor: "pointer",
+    fontFamily: "inherit",
+    lineHeight: "inherit",
+  };
+}
+
 /** Chevron rotates 90deg when the file card is open. */
 export function chevronFor(open: boolean): CSSProperties {
   return {

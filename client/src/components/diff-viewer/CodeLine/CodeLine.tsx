@@ -5,7 +5,7 @@
 import React from "react";
 import { commentTargetFor, type CommentThread, type DiffCommentApi, cs } from "../comments";
 import { type Line } from "../helpers";
-import { s, lineRowFor, lineSignFor, severityRowFor, severityChipFor } from "../styles";
+import { s, lineRowFor, lineSignFor, severityRowFor, severityChipFor, severityChipButtonFor } from "../styles";
 import { SEVERITY_CHIP } from "../constants";
 import { CommentThreadView } from "../CommentThreadView/CommentThreadView";
 import { InlineComposer } from "../InlineComposer/InlineComposer";
@@ -18,6 +18,8 @@ export function CodeLine({
   commenting,
   anchorId,
   severity,
+  findingId,
+  onFindingClick,
 }: {
   ln: Line;
   path: string;
@@ -27,6 +29,10 @@ export function CodeLine({
   anchorId?: string;
   /** Smart Diff overlay: colours this row + shows a right-aligned severity chip. */
   severity?: Severity;
+  /** Smart Diff: the (highest-severity) finding on this line — makes the chip a
+   *  button that jumps to that finding in "Agent runs". */
+  findingId?: string;
+  onFindingClick?: (findingId: string) => void;
 }) {
   const [hover, setHover] = React.useState(false);
   const [composing, setComposing] = React.useState(false);
@@ -73,7 +79,22 @@ export function CodeLine({
         <span className="mono" style={s.lineText}>
           {ln.text || " "}
         </span>
-        {chip && <span style={severityChipFor(chip.color, chip.bg)}>{chip.label}</span>}
+        {chip &&
+          (findingId && onFindingClick ? (
+            <button
+              type="button"
+              aria-label="Go to this finding in Agent runs"
+              onClick={(e) => {
+                e.stopPropagation();
+                onFindingClick(findingId);
+              }}
+              style={severityChipButtonFor(chip.color, chip.bg)}
+            >
+              {chip.label}
+            </button>
+          ) : (
+            <span style={severityChipFor(chip.color, chip.bg)}>{chip.label}</span>
+          ))}
       </div>
 
       {commenting &&

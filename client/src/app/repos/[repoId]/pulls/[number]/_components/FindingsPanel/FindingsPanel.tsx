@@ -17,11 +17,14 @@ export function FindingsPanel({
   prId,
   repoFullName,
   headSha,
+  targetFindingId,
 }: {
   findings: FindingRecord[];
   prId: string;
   repoFullName?: string | null;
   headSha?: string | null;
+  /** From a Smart Diff chip click (`?finding=<id>`): reveal + focus this finding. */
+  targetFindingId?: string | null;
 }) {
   const t = useTranslations("prReview");
   const action = useFindingAction();
@@ -29,6 +32,19 @@ export function FindingsPanel({
   const [focusIdx, setFocusIdx] = React.useState(0);
 
   const shown = React.useMemo(() => visibleFindings(findings, hideLow), [findings, hideLow]);
+
+  // A targeted finding must be visible and focused. If the "hide low confidence"
+  // filter would drop it, turn the filter off so we never navigate to a card
+  // that isn't in the DOM; then focus its row (drives the severity highlight).
+  React.useEffect(() => {
+    if (!targetFindingId || !findings.some((f) => f.id === targetFindingId)) return;
+    if (hideLow && !shown.some((f) => f.id === targetFindingId)) {
+      setHideLow(false);
+      return; // re-runs once `shown` recomputes
+    }
+    const idx = shown.findIndex((f) => f.id === targetFindingId);
+    if (idx >= 0) setFocusIdx(idx);
+  }, [targetFindingId, findings, shown, hideLow]);
 
   // j/k navigation + a/d shortcuts on the focused finding (keyboard).
   React.useEffect(() => {
@@ -64,6 +80,7 @@ export function FindingsPanel({
               f={f}
               focused={i === focusIdx}
               defaultExpanded={i === 0}
+              targetFindingId={targetFindingId}
               pending={action.isPending}
               repoFullName={repoFullName}
               headSha={headSha}

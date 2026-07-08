@@ -16,11 +16,13 @@ interface DiffTabProps {
   files: PrFile[];
   /** Inline commenting is offered only on open PRs (GitHub rejects otherwise). */
   canComment?: boolean;
+  /** Clicking a code-line severity chip jumps to that finding in "Agent runs". */
+  onFindingClick?: (findingId: string) => void;
 }
 
 type Order = "smart" | "original";
 
-export function DiffTab({ prId, filesCount, files, canComment }: DiffTabProps) {
+export function DiffTab({ prId, filesCount, files, canComment, onFindingClick }: DiffTabProps) {
   const t = useTranslations("smart-diff");
   const { data: comments } = usePrComments(prId);
   const create = useCreatePrComment(prId);
@@ -123,6 +125,7 @@ export function DiffTab({ prId, filesCount, files, canComment }: DiffTabProps) {
           findingsByPath={findingsByPath}
           commenting={commenting}
           grouped={order === "smart"}
+          onFindingClick={onFindingClick}
         />
       ) : (
         // Smart Diff still loading or unavailable — fall back to the plain

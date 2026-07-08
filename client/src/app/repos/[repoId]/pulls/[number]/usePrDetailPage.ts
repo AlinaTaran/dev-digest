@@ -45,12 +45,19 @@ export function usePrDetailPage() {
 
   const tab = search.get("tab") ?? "overview";
   const traceRunId = search.get("trace");
-  const setParam = (key: string, val: string | null) => {
+  const targetFindingId = search.get("finding");
+  const pushParams = (entries: Record<string, string | null>) => {
     const sp = new URLSearchParams(search.toString());
-    if (val == null) sp.delete(key);
-    else sp.set(key, val);
+    for (const [key, val] of Object.entries(entries)) {
+      if (val == null) sp.delete(key);
+      else sp.set(key, val);
+    }
     router.replace(`/repos/${repoId}/pulls/${number}${sp.toString() ? `?${sp.toString()}` : ""}`);
   };
+  const setParam = (key: string, val: string | null) => pushParams({ [key]: val });
+  // Clicking a Smart Diff severity chip: switch to the findings ("Agent runs")
+  // tab AND target the finding — one client-side replace, no reload.
+  const goToFinding = (findingId: string) => pushParams({ tab: "findings", finding: findingId });
 
   // Reviews come newest-first; each is its own run (grouped into accordions).
   const runs = reviews ?? [];
@@ -71,6 +78,8 @@ export function usePrDetailPage() {
     setTab: (t: string) => setParam("tab", t),
     traceRunId,
     setTrace: (id: string | null) => setParam("trace", id),
+    targetFindingId,
+    goToFinding,
     runs,
     prRuns,
     liveRunIds,

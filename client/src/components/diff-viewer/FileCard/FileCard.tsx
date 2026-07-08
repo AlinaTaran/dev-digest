@@ -19,16 +19,21 @@ import { s, chevronFor } from "../styles";
 import { CodeLine } from "../CodeLine/CodeLine";
 import { OutdatedComments } from "../OutdatedComments/OutdatedComments";
 
-/** Highest-severity-wins map of new-line-number → Severity, for the code-line
- *  overlay. Findings without a resolvable line number (end < start) are skipped. */
-function severityByLine(findings: Finding[] | undefined): Map<number, Severity> {
-  const map = new Map<number, Severity>();
+/** Highest-severity-wins map of new-line-number → {severity, findingId}, for the
+ *  code-line overlay. The findingId is the *winning* finding's id, so the chip
+ *  links to exactly the finding it visually represents. Findings without a
+ *  resolvable line number (end < start) are skipped. */
+function severityByLine(
+  findings: Finding[] | undefined
+): Map<number, { severity: Severity; findingId: string }> {
+  const map = new Map<number, { severity: Severity; findingId: string }>();
   if (!findings) return map;
   const rank: Record<Severity, number> = { CRITICAL: 3, WARNING: 2, SUGGESTION: 1 };
   for (const f of findings) {
     for (let line = f.start_line; line <= f.end_line; line++) {
       const existing = map.get(line);
-      if (!existing || rank[f.severity] > rank[existing]) map.set(line, f.severity);
+      if (!existing || rank[f.severity] > rank[existing.severity])
+        map.set(line, { severity: f.severity, findingId: f.id });
     }
   }
   return map;
@@ -53,6 +58,7 @@ export function FileCard({
   mechanical,
   findingsLabel,
   mechanicalPlaceholderText,
+  onFindingClick,
 }: {
   file: PrFile;
   commenting?: DiffCommentApi;
@@ -71,6 +77,9 @@ export function FileCard({
   /** Pre-formatted placeholder shown instead of the real diff for a mechanical
    *  file with no findings. */
   mechanicalPlaceholderText?: string;
+  /** Smart Diff: clicking a code-line severity chip jumps to that finding in
+   *  "Agent runs". Plain DiffViewer callers omit it, so chips stay static. */
+  onFindingClick?: (findingId: string) => void;
 }) {
   const t = useTranslations("shell");
   const [open, setOpen] = React.useState(
@@ -162,6 +171,7 @@ export function FileCard({
           ) : (
             lines.map((ln) => {
               const lineNo = ln.newNo ?? ln.oldNo;
+              const hit = lineNo != null ? lineSeverity.get(lineNo) : undefined;
               return (
                 <CodeLine
                   key={lineKey(ln)}
@@ -170,7 +180,9 @@ export function FileCard({
                   threads={threadsForLine(ln, matched)}
                   commenting={commenting}
                   anchorId={lineNo != null ? anchorId(file.path, lineNo) : undefined}
-                  severity={lineNo != null ? lineSeverity.get(lineNo) : undefined}
+                  severity={hit?.severity}
+                  findingId={hit?.findingId}
+                  onFindingClick={onFindingClick}
                 />
               );
             })

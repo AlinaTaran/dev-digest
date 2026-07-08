@@ -72,7 +72,88 @@ export const s = {
     color: "var(--text-primary)",
     paddingRight: 12,
   } satisfies CSSProperties,
+
+  // ---- Smart Diff additions ----
+  groupWrap: { display: "flex", flexDirection: "column", gap: 10 } satisfies CSSProperties,
+  groupHeader: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "4px 2px",
+  } satisfies CSSProperties,
+  roleMarker: {
+    width: 8,
+    height: 8,
+    borderRadius: 99,
+    flexShrink: 0,
+  } satisfies CSSProperties,
+  groupLabel: {
+    fontSize: 12,
+    fontWeight: 700,
+    textTransform: "uppercase",
+    letterSpacing: "0.06em",
+    color: "var(--text-primary)",
+  } satisfies CSSProperties,
+  groupDescription: {
+    fontSize: 12,
+    color: "var(--text-muted)",
+    flex: 1,
+    minWidth: 0,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  } satisfies CSSProperties,
+  groupCount: { fontSize: 12, color: "var(--text-muted)", flexShrink: 0 } satisfies CSSProperties,
+  findingsDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 99,
+    background: "var(--crit)",
+    flexShrink: 0,
+  } satisfies CSSProperties,
+  findingsBadge: {
+    fontSize: 12,
+    fontWeight: 600,
+    color: "var(--crit)",
+    background: "var(--crit-bg)",
+    border: "none",
+    borderRadius: 5,
+    padding: "2px 8px",
+    cursor: "pointer",
+    flexShrink: 0,
+  } satisfies CSSProperties,
+  mechanicalPlaceholder: {
+    padding: "14px 18px",
+    fontSize: 13,
+    color: "var(--text-muted)",
+    textAlign: "center",
+  } satisfies CSSProperties,
+  severityChip: {
+    fontSize: 10.5,
+    fontWeight: 700,
+    textTransform: "uppercase",
+    letterSpacing: "0.04em",
+    padding: "1px 7px",
+    borderRadius: 4,
+    marginLeft: 8,
+    flexShrink: 0,
+  } satisfies CSSProperties,
 } as const;
+
+/** Role marker dot colour (core=accent blue, wiring=amber, boilerplate=gray). */
+export function roleMarkerFor(color: string): CSSProperties {
+  return { ...s.roleMarker, background: color };
+}
+
+/** Left-border bar + tinted background for a severity-flagged code line. */
+export function severityRowFor(color: string, bg: string): CSSProperties {
+  return { borderLeft: `3px solid ${color}`, background: bg };
+}
+
+/** Inline chip colours for a severity-flagged code line. */
+export function severityChipFor(color: string, bg: string): CSSProperties {
+  return { ...s.severityChip, color, background: bg };
+}
 
 /** Chevron rotates 90deg when the file card is open. */
 export function chevronFor(open: boolean): CSSProperties {

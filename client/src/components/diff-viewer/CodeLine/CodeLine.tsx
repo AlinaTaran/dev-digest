@@ -5,20 +5,28 @@
 import React from "react";
 import { commentTargetFor, type CommentThread, type DiffCommentApi, cs } from "../comments";
 import { type Line } from "../helpers";
-import { s, lineRowFor, lineSignFor } from "../styles";
+import { s, lineRowFor, lineSignFor, severityRowFor, severityChipFor } from "../styles";
+import { SEVERITY_CHIP } from "../constants";
 import { CommentThreadView } from "../CommentThreadView/CommentThreadView";
 import { InlineComposer } from "../InlineComposer/InlineComposer";
+import type { Severity } from "@/lib/types";
 
 export function CodeLine({
   ln,
   path,
   threads,
   commenting,
+  anchorId,
+  severity,
 }: {
   ln: Line;
   path: string;
   threads: CommentThread[];
   commenting?: DiffCommentApi;
+  /** DOM id for this row — the scroll target for a Smart Diff "N findings" badge. */
+  anchorId?: string;
+  /** Smart Diff overlay: colours this row + shows a right-aligned severity chip. */
+  severity?: Severity;
 }) {
   const [hover, setHover] = React.useState(false);
   const [composing, setComposing] = React.useState(false);
@@ -35,13 +43,16 @@ export function CodeLine({
   const target = commenting?.canComment ? commentTargetFor(ln) : null;
   const showAdd = hover && !!target && !composing;
 
+  const chip = severity ? SEVERITY_CHIP[severity] : null;
+
   return (
     <div
+      id={anchorId}
       style={cs.rowWrap}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
     >
-      <div style={lineRowFor(ln.kind)}>
+      <div style={chip ? { ...lineRowFor(ln.kind), ...severityRowFor(chip.color, chip.bg) } : lineRowFor(ln.kind)}>
         <span className="mono tnum" style={s.lineNo}>
           {showAdd && target && (
             <button
@@ -62,6 +73,7 @@ export function CodeLine({
         <span className="mono" style={s.lineText}>
           {ln.text || " "}
         </span>
+        {chip && <span style={severityChipFor(chip.color, chip.bg)}>{chip.label}</span>}
       </div>
 
       {commenting &&

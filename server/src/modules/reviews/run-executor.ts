@@ -8,6 +8,8 @@ import type { ReviewRepository, FindingRow, PullRow, ReviewRow } from './reposit
 import { REVIEW_STRATEGY } from './constants.js';
 import { taskLine } from './helpers.js';
 import { loadDiff } from './diff-loader.js';
+import { IntentService } from '../intent/service.js';
+import { buildIntentBlock } from '../intent/prompts.js';
 
 /** Thrown by a run when the user cancels it mid-flight (between map files). */
 export class RunCancelledError extends Error {
@@ -104,6 +106,22 @@ export class ReviewRunExecutor {
     }
     runLog.info(`Diff ready — ${diff.files.length} changed file(s); starting ${jobs.length} agent run(s)`);
 
+    // Intent Layer (Scenario C) — resolve ONCE per run, before the per-agent
+    // loop, reusing the cached `pr_intent` row when present (no extra LLM
+    // call). Every agent in the run gets the same intent block injected into
+    // its prompt. Best-effort: intent must NEVER fail the review, mirroring
+    // the callers/repoMap enrichments above — log and continue on error.
+    let intentText: string | undefined;
+    try {
+      const intentService = new IntentService(this.container);
+      let intent = await this.repo.getIntent(pull.id);
+      if (!intent) intent = await intentService.computeForRun(workspaceId, pull, repo, diff, runLog);
+      intentText = buildIntentBlock(intent);
+    } catch (err) {
+      runLog.info(`Intent resolution failed — continuing without it: ${(err as Error).message}`);
+      intentText = undefined;
+    }
+
     for (const { agent, runId } of jobs) {
       const agentStart = Date.now();
       logger?.info(
@@ -111,7 +129,7 @@ export class ReviewRunExecutor {
         `review: agent "${agent.name}" started (${agent.provider}/${agent.model})`,
       );
       try {
-        const outcome = await this.runOneAgent(workspaceId, pull, repo, diff, agent, runId, runLog);
+        const outcome = await this.runOneAgent(workspaceId, pull, repo, diff, agent, runId, runLog, intentText);
         logger?.info(
           {
             runId,
@@ -143,6 +161,7 @@ export class ReviewRunExecutor {
     agent: AgentRow,
     runId: string,
     parentLog: RunLogger,
+    intentText: string | undefined,
   ): Promise<RunOutcome> {
     const start = Date.now();
     // Narrow the fanned-out pre-work logger to THIS run; the shared diff/intent
@@ -213,6 +232,9 @@ export class ReviewRunExecutor {
         ...(callersDigest ? { callers: callersDigest } : {}),
         // T3 — repo skeleton, same omit-when-empty contract.
         ...(repoMap ? { repoMap } : {}),
+        // Intent Layer (Scenario C) — same intent block for every agent in this
+        // run; assemblePrompt omits the `## Intent` section when undefined.
+        ...(intentText ? { intent: intentText } : {}),
         // PR author's description/body — untrusted; assemblePrompt wraps +
         // truncates it. Omitted when the PR has no body.
         ...(pull.body ? { prDescription: pull.body } : {}),

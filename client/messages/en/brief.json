@@ -10,6 +10,15 @@
   "overlap": "{count} overlap",
   "unavailable": "Brief not available yet.",
   "unavailableHint": "Run a review or open the PR to compute it.",
+  "inScope": "In scope",
+  "outOfScope": "Out of scope",
+  "noneListed": "None listed.",
+  "recompute": "Recompute",
+  "generating": "Generating intent…",
+  "error": {
+    "title": "Couldn't generate intent",
+    "body": "Something went wrong while deriving the intent for this PR."
+  },
   "why": {
     "title": "git-why",
     "blame": "blame",

@@ -1,6 +1,6 @@
 import { simpleGit, type SimpleGit } from 'simple-git';
-import { join } from 'node:path';
-import { mkdir, readFile, access, rm } from 'node:fs/promises';
+import { join, sep } from 'node:path';
+import { mkdir, readFile, realpath, access, rm } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import type {
   GitClient,
@@ -126,8 +126,25 @@ export class SimpleGitClient implements GitClient {
     }));
   }
 
+  /**
+   * Defense-in-depth against a symlink escape: the clone's content is
+   * attacker-controlled (it's a cloned PR/repo), so a committed symlink (e.g.
+   * `docs/plans/x.md -> ../../../../secrets.json`) can point outside the
+   * clone root. Resolve BOTH the root and the requested path with `realpath`
+   * (which follows symlinks) and refuse to read anything that resolves
+   * outside the root — callers rely on path-string checks upstream too (see
+   * `modules/intent/references.ts#isSafeRepoPath`), but the guard belongs
+   * here as well so every caller of this port is protected, not just the
+   * ones that remembered to check first.
+   */
   async readFile(repo: RepoRef, path: string): Promise<string> {
-    return readFile(join(this.clonePathFor(repo), path), 'utf8');
+    const root = this.clonePathFor(repo);
+    const target = join(root, path);
+    const [rootReal, targetReal] = await Promise.all([realpath(root), realpath(target)]);
+    if (targetReal !== rootReal && !targetReal.startsWith(rootReal + sep)) {
+      throw new Error('path escapes repository root');
+    }
+    return readFile(targetReal, 'utf8');
   }
 }
 

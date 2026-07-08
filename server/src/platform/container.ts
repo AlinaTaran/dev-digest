@@ -6,6 +6,7 @@ import type {
   CodeIndex,
   Embedder,
   LLMProvider,
+  WebFetchClient,
 } from '@devdigest/shared';
 import type { AppConfig } from './config.js';
 import type { Db } from '../db/client.js';
@@ -19,6 +20,7 @@ import { RipgrepCodeIndex } from '../adapters/codeindex/ripgrep.js';
 import { OpenAIProvider } from '../adapters/llm/openai.js';
 import { AnthropicProvider } from '../adapters/llm/anthropic.js';
 import { OpenAIEmbedder } from '../adapters/embedder/openai.js';
+import { HttpWebFetchClient } from '../adapters/http/web-fetch.js';
 import { OpenRouterProvider } from '@devdigest/reviewer-core';
 import { estimateCost } from '../adapters/llm/pricing.js';
 import { PriceBook } from './price-book.js';
@@ -51,6 +53,8 @@ export interface ContainerOverrides {
   /** repo-intel T3 adapters — only the indexer pipeline reads these. */
   depgraph?: DepGraph;
   tokenizer?: Tokenizer;
+  /** Intent Layer's SSRF-guarded external plan/spec URL fetcher. */
+  webFetch?: WebFetchClient;
 }
 
 export class Container {
@@ -76,6 +80,7 @@ export class Container {
   private _depgraph?: DepGraph;
   private _tokenizer?: Tokenizer;
   private _priceBook?: PriceBook;
+  private _webFetch?: WebFetchClient;
 
   constructor(config: AppConfig, db: Db, private overrides: ContainerOverrides = {}) {
     this.config = config;
@@ -98,6 +103,13 @@ export class Container {
 
   get reviewRepo(): ReviewRepository {
     return (this._reviewRepo ??= new ReviewRepository(this.db));
+  }
+
+  /** SSRF-guarded external plan/spec URL fetcher for the Intent Layer. */
+  get webFetch(): WebFetchClient {
+    return this.overrides.webFetch ?? (this._webFetch ??= new HttpWebFetchClient({
+      enabled: this.config.externalFetchEnabled,
+    }));
   }
 
   get codeIndex(): CodeIndex {

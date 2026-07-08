@@ -1,7 +1,9 @@
 import { and, eq } from 'drizzle-orm';
+import { z } from 'zod';
 import type { Db } from '../../../db/client.js';
 import * as t from '../../../db/schema.js';
 import type { Intent } from '@devdigest/shared';
+import { Risk } from '@devdigest/shared';
 import type { PullRow } from '../../../db/rows.js';
 
 // ---- PR lookup (workspace-scoped) -----------------------------------------
@@ -65,4 +67,28 @@ export async function getIntent(db: Db, prId: string): Promise<Intent | undefine
   const [row] = await db.select().from(t.prIntent).where(eq(t.prIntent.prId, prId));
   if (!row) return undefined;
   return { intent: row.intent, in_scope: row.inScope, out_of_scope: row.outOfScope };
+}
+
+// ---- brief (risks) ---------------------------------------------------------
+
+/** Shape stored in `pr_brief.json`; only `risks` is populated by this task. */
+const PrBriefBlob = z.object({ risks: z.array(Risk) });
+
+export async function upsertBrief(db: Db, prId: string, json: unknown): Promise<void> {
+  await db
+    .insert(t.prBrief)
+    .values({ prId, json })
+    .onConflictDoUpdate({ target: t.prBrief.prId, set: { json } });
+}
+
+/**
+ * Reads the `pr_brief` row and validates its `risks` shape. Tolerates
+ * legacy/malformed/missing blobs by falling back to `risks: []` rather than
+ * throwing — risk generation is best-effort, never fatal.
+ */
+export async function getBrief(db: Db, prId: string): Promise<{ risks: Risk[] } | undefined> {
+  const [row] = await db.select().from(t.prBrief).where(eq(t.prBrief.prId, prId));
+  if (!row) return undefined;
+  const parsed = PrBriefBlob.safeParse(row.json);
+  return parsed.success ? parsed.data : { risks: [] };
 }

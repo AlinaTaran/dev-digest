@@ -210,6 +210,20 @@ export interface CodeIndex {
   references(repo: RepoRef, symbol: string): Promise<CodeReference[]>;
 }
 
+// ---------- WebFetch (SSRF-guarded external plan/spec URL fetch) ----------
+export interface WebFetchResult {
+  url: string;
+  contentType: string | null;
+  text: string;
+  truncated: boolean;
+}
+
+export interface WebFetchClient {
+  /** Fetch a plain-text/HTML document over http(s), SSRF-guarded. Returns null when
+   *  fetching is disabled, the URL is not allowed, or the request fails. */
+  fetch(url: string, opts?: { maxBytes?: number; timeoutMs?: number }): Promise<WebFetchResult | null>;
+}
+
 // ---------- Auth (pluggable; MVP = LocalNoAuthProvider) ----------
 export interface AuthUser {
   id: string;

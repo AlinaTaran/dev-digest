@@ -18,6 +18,7 @@ import { SkillsService } from './service.js';
  *   PUT    /skills/:id          → update (body change → new immutable version)
  *   DELETE /skills/:id          → delete (cascades versions + agent links)
  *   GET    /skills/:id/versions → body-version history (newest first)
+ *   POST   /skills/:id/restore  → restore an old version's body (→ new version)
  *   GET    /skills/:id/stats    → usage stats (linked agents + findings/category)
  *   POST   /skills/import       → extract {name,description,type,body} from a
  *                                  .md/.zip file — unsaved preview
@@ -43,6 +44,10 @@ const UpdateSkillBody = z.object({
 const ImportSkillBody = z.object({
   filename: z.string().min(1),
   content_base64: z.string(),
+});
+
+const RestoreSkillBody = z.object({
+  version: z.number().int().positive(),
 });
 
 export default async function skillsRoutes(appBase: FastifyInstance) {
@@ -100,6 +105,17 @@ export default async function skillsRoutes(appBase: FastifyInstance) {
     if (!versions) throw new NotFoundError('Skill not found');
     return versions;
   });
+
+  app.post(
+    '/skills/:id/restore',
+    { schema: { params: IdParams, body: RestoreSkillBody } },
+    async (req) => {
+      const { workspaceId } = await getContext(app.container, req);
+      const skill = await service.restoreVersion(workspaceId, req.params.id, req.body.version);
+      if (!skill) throw new NotFoundError('Skill or version not found');
+      return skill;
+    },
+  );
 
   app.get('/skills/:id/stats', { schema: { params: IdParams } }, async (req) => {
     const { workspaceId } = await getContext(app.container, req);

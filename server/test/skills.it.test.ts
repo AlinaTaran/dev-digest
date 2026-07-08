@@ -215,6 +215,86 @@ d('skills module', () => {
     await app.close();
   });
 
+  it('restore: re-applies an old version body as a fresh version (history intact)', async () => {
+    const app = await makeApp();
+    const created = await app.inject({ method: 'POST', url: '/skills', payload: createSkillBody });
+    const skillId = created.json().id as string;
+
+    // Body change → v2.
+    const v2 = await app.inject({
+      method: 'PUT',
+      url: `/skills/${skillId}`,
+      payload: { body: 'v2 body' },
+    });
+    expect(v2.json().version).toBe(2);
+
+    // Restore v1 → the server re-applies v1's body, recorded as a NEW v3.
+    const restored = await app.inject({
+      method: 'POST',
+      url: `/skills/${skillId}/restore`,
+      payload: { version: 1 },
+    });
+    expect(restored.statusCode).toBe(200);
+    expect(restored.json()).toMatchObject({ version: 3, body: createSkillBody.body });
+
+    const versions = (
+      await app.inject({ method: 'GET', url: `/skills/${skillId}/versions` })
+    ).json() as Array<{ version: number; body: string }>;
+    expect(versions.map((v) => v.version)).toEqual([3, 2, 1]);
+    expect(versions[0]!.body).toBe(createSkillBody.body);
+    await app.close();
+  });
+
+  it('restore: 404 for an unknown skill or an unrecorded version', async () => {
+    const app = await makeApp();
+    const ghost = '00000000-0000-0000-0000-000000000000';
+    expect(
+      (
+        await app.inject({
+          method: 'POST',
+          url: `/skills/${ghost}/restore`,
+          payload: { version: 1 },
+        })
+      ).statusCode,
+    ).toBe(404);
+
+    const created = await app.inject({ method: 'POST', url: '/skills', payload: createSkillBody });
+    const skillId = created.json().id as string;
+    expect(
+      (
+        await app.inject({
+          method: 'POST',
+          url: `/skills/${skillId}/restore`,
+          payload: { version: 99 },
+        })
+      ).statusCode,
+    ).toBe(404);
+    await app.close();
+  });
+
+  it('seed: ≥6 skills, with 4 linked to Test Quality Reviewer and 3 to Security Reviewer', async () => {
+    const { db } = pg.handle;
+    const linkCountFor = async (agentName: string) => {
+      const [agent] = await db
+        .select()
+        .from(t.agents)
+        .where(and(eq(t.agents.workspaceId, workspaceId), eq(t.agents.name, agentName)));
+      const links = await db
+        .select()
+        .from(t.agentSkills)
+        .where(eq(t.agentSkills.agentId, agent!.id));
+      return links.length;
+    };
+
+    const skills = await db
+      .select()
+      .from(t.skills)
+      .where(eq(t.skills.workspaceId, workspaceId));
+    expect(skills.length).toBeGreaterThanOrEqual(6);
+    expect(await linkCountFor('Test Quality Reviewer')).toBe(4);
+    expect(await linkCountFor('Security Reviewer')).toBe(3);
+  });
+
   it('delete cascades skill_versions and agent_skills rows', async () => {
     const app = await makeApp();
     const created = await app.inject({ method: 'POST', url: '/skills', payload: createSkillBody });

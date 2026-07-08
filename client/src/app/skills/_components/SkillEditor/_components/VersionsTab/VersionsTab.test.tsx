@@ -13,7 +13,7 @@ const VERSIONS = [
 
 vi.mock("../../../../../../lib/hooks/skills", () => ({
   useSkillVersions: () => ({ data: VERSIONS, isLoading: false, isError: false, refetch: vi.fn() }),
-  useUpdateSkill: () => ({ mutate, isPending: false, isSuccess: false, data: undefined }),
+  useRestoreSkill: () => ({ mutate, isPending: false, isSuccess: false, data: undefined }),
 }));
 
 import { VersionsTab } from "./VersionsTab";
@@ -58,12 +58,12 @@ describe("Skills VersionsTab", () => {
     expect(screen.getByText("Check B.")).toBeInTheDocument();
   });
 
-  it("calls useUpdateSkill's mutate with the old body when restoring a version", () => {
+  it("calls useRestoreSkill's mutate with the target version when restoring", () => {
     renderWithIntl(<VersionsTab skill={SKILL} />);
     fireEvent.click(screen.getByText("Restore"));
 
     expect(mutate).toHaveBeenCalledTimes(1);
     const [arg] = mutate.mock.calls[0]!;
-    expect(arg).toMatchObject({ id: "sk1", patch: { body: "# Rule\nCheck A." } });
+    expect(arg).toMatchObject({ id: "sk1", version: 1 });
   });
 });

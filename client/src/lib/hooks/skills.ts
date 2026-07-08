@@ -62,6 +62,27 @@ export function useDeleteSkill() {
   });
 }
 
+export interface RestoreSkillInput {
+  id: string;
+  version: number;
+}
+
+/** Restore a past body snapshot as the current body. The server re-applies the
+    old body, so the body-change-bumps-version rule records it as a NEW version —
+    hence we also invalidate the versions list (which useUpdateSkill omits). */
+export function useRestoreSkill() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, version }: RestoreSkillInput) =>
+      api.post<Skill>(`/skills/${id}/restore`, { version }),
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["skills"] });
+      qc.invalidateQueries({ queryKey: ["skill", data.id] });
+      qc.invalidateQueries({ queryKey: ["skill-versions", data.id] });
+    },
+  });
+}
+
 export interface SkillVersion {
   skill_id: string;
   version: number;

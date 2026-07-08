@@ -118,6 +118,26 @@ export class SkillsService {
   }
 
   /**
+   * Restore a past body snapshot as the skill's current body. This does NOT
+   * mutate history — it re-applies the old body through `update`, so the
+   * body-change-bumps-version rule records it as a fresh version on top.
+   * Returns undefined (route → 404) when the skill isn't in this workspace or
+   * the requested version was never recorded.
+   */
+  async restoreVersion(
+    workspaceId: string,
+    skillId: string,
+    version: number,
+  ): Promise<Skill | undefined> {
+    const skill = await this.repo.getById(workspaceId, skillId);
+    if (!skill) return undefined;
+    const snapshot = await this.repo.getVersion(skillId, version);
+    if (!snapshot) return undefined;
+    const row = await this.repo.update(workspaceId, skillId, { body: snapshot.body });
+    return row ? toSkillDto(row) : undefined;
+  }
+
+  /**
    * Usage stats for a skill (linked agents + findings-by-category). Returns
    * undefined when the skill isn't in this workspace (route → 404).
    */

@@ -1,14 +1,14 @@
 /* VersionsTab — history from skill_versions with a per-row Diff (against the
-   current version) and Restore (PUT the old body as the new current body —
-   creates a fresh version, per the body-change-bumps-version rule). The diff is
-   rendered on demand once a row's Diff button is clicked. */
+   current version) and Restore (POST /skills/:id/restore — the server re-applies
+   the old body, which the body-change-bumps-version rule records as a fresh
+   version). The diff is rendered on demand once a row's Diff button is clicked. */
 "use client";
 
 import React from "react";
 import { useTranslations } from "next-intl";
 import { Badge, Button, Skeleton, ErrorState } from "@devdigest/ui";
 import type { Skill } from "@devdigest/shared";
-import { useSkillVersions, useUpdateSkill, type SkillVersion } from "../../../../../../lib/hooks/skills";
+import { useSkillVersions, useRestoreSkill, type SkillVersion } from "../../../../../../lib/hooks/skills";
 import { useToast } from "../../../../../../lib/toast";
 import { diffLines } from "./helpers";
 import { s } from "./styles";
@@ -17,7 +17,7 @@ export function VersionsTab({ skill }: { skill: Skill }) {
   const t = useTranslations("skills");
   const toast = useToast();
   const { data: versions, isLoading, isError, refetch } = useSkillVersions(skill.id);
-  const update = useUpdateSkill();
+  const restore = useRestoreSkill();
   const [diffVersion, setDiffVersion] = React.useState<number | null>(null);
 
   if (isLoading) {
@@ -39,9 +39,9 @@ export function VersionsTab({ skill }: { skill: Skill }) {
   const diffFrom = diffVersion != null ? sorted.find((v) => v.version === diffVersion) : undefined;
   const ops = diffFrom ? diffLines(diffFrom.body, newest.body) : [];
 
-  const restore = (v: SkillVersion) =>
-    update.mutate(
-      { id: skill.id, patch: { body: v.body } },
+  const onRestore = (v: SkillVersion) =>
+    restore.mutate(
+      { id: skill.id, version: v.version },
       { onSuccess: (data) => toast.success(t("versions.restored", { version: data.version })) },
     );
 
@@ -80,8 +80,8 @@ export function VersionsTab({ skill }: { skill: Skill }) {
                     kind="secondary"
                     size="sm"
                     icon="History"
-                    onClick={() => restore(v)}
-                    disabled={update.isPending}
+                    onClick={() => onRestore(v)}
+                    disabled={restore.isPending}
                   >
                     {t("versions.restore")}
                   </Button>

@@ -10,6 +10,10 @@ import {
   BRANCH_COVERAGE_GATE_BODY,
   CORNER_CASE_CHECKLIST_BODY,
   MOCK_OVERUSE_GATE_BODY,
+  ASSERTION_QUALITY_GATE_BODY,
+  INJECTION_GUARD_BODY,
+  SECRETS_IN_CODE_GATE_BODY,
+  AUTHZ_BOUNDARY_CHECK_BODY,
 } from './seed-prompts.js';
 
 /** Default provider/model for the built-in reviewer agents. */
@@ -236,7 +240,7 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
     if (!existing) await db.insert(t.agents).values(a);
   }
 
-  // ---- manual skills for the Test Quality Reviewer (skills feature demo) ----
+  // ---- manual skills (skills feature demo): 4 test-quality + 3 security ----
   const seedSkills: Array<typeof t.skills.$inferInsert> = [
     {
       workspaceId,
@@ -271,6 +275,50 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
       version: 1,
       body: MOCK_OVERUSE_GATE_BODY,
     },
+    {
+      workspaceId,
+      name: 'assertion-quality-gate',
+      description:
+        'Flags tests whose assertions would not fail if the behaviour they claim to cover broke (no-op, tautological, or mock-only assertions).',
+      type: 'rubric',
+      source: 'manual',
+      enabled: true,
+      version: 1,
+      body: ASSERTION_QUALITY_GATE_BODY,
+    },
+    {
+      workspaceId,
+      name: 'injection-guard',
+      description:
+        'Flags SQL/shell/HTML/path/NoSQL sinks built by string concatenation from untrusted input instead of a parameterised or escaped API.',
+      type: 'security',
+      source: 'manual',
+      enabled: true,
+      version: 1,
+      body: INJECTION_GUARD_BODY,
+    },
+    {
+      workspaceId,
+      name: 'secrets-in-code-gate',
+      description:
+        'Flags credentials hard-coded in source, committed config, logs, or error responses that should live behind the secrets provider.',
+      type: 'security',
+      source: 'manual',
+      enabled: true,
+      version: 1,
+      body: SECRETS_IN_CODE_GATE_BODY,
+    },
+    {
+      workspaceId,
+      name: 'authz-boundary-check',
+      description:
+        'Flags endpoints and queries that authenticate the caller but skip object-level authorization (missing workspace scoping / IDOR).',
+      type: 'security',
+      source: 'manual',
+      enabled: true,
+      version: 1,
+      body: AUTHZ_BOUNDARY_CHECK_BODY,
+    },
   ];
 
   const skillIdsByName = new Map<string, string>();
@@ -289,22 +337,34 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
     skillIdsByName.set(s.name, existing!.id);
   }
 
-  // ---- link the 3 manual skills to Test Quality Reviewer, order = index ----
-  const [testQualityAgent] = await db
-    .select()
-    .from(t.agents)
-    .where(and(eq(t.agents.workspaceId, workspaceId), eq(t.agents.name, 'Test Quality Reviewer')));
-  if (testQualityAgent) {
-    const linkOrder = ['branch-coverage-gate', 'corner-case-checklist', 'mock-overuse-gate'];
-    for (const [index, name] of linkOrder.entries()) {
+  // ---- link the seeded skills to their reviewers, order = index ----
+  const linkSkillsToAgent = async (agentName: string, skillNames: string[]) => {
+    const [agent] = await db
+      .select()
+      .from(t.agents)
+      .where(and(eq(t.agents.workspaceId, workspaceId), eq(t.agents.name, agentName)));
+    if (!agent) return;
+    for (const [index, name] of skillNames.entries()) {
       const skillId = skillIdsByName.get(name);
       if (!skillId) continue;
       await db
         .insert(t.agentSkills)
-        .values({ agentId: testQualityAgent.id, skillId, order: index })
+        .values({ agentId: agent.id, skillId, order: index })
         .onConflictDoNothing();
     }
-  }
+  };
+
+  await linkSkillsToAgent('Test Quality Reviewer', [
+    'branch-coverage-gate',
+    'corner-case-checklist',
+    'mock-overuse-gate',
+    'assertion-quality-gate',
+  ]);
+  await linkSkillsToAgent('Security Reviewer', [
+    'injection-guard',
+    'secrets-in-code-gate',
+    'authz-boundary-check',
+  ]);
 
   return { workspaceId, userId };
 }

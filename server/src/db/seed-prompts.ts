@@ -533,3 +533,121 @@ would this test's assertions still pass? If yes, the mock is hiding that
 dependency's real contract — flag it with the file:line of the mock and the
 assertion it undermines, and suggest either narrowing the mock or adding an
 assertion on real output/state.`;
+
+// ---- Skills feature demo — additional test-quality body ("Test Quality Reviewer") ----
+
+export const ASSERTION_QUALITY_GATE_BODY = `# Assertion quality gate
+
+A test that runs the code but asserts nothing meaningful is worse than no
+test — it turns green while the behaviour rots. Flag tests whose assertions do
+not actually pin down the behaviour they claim to cover.
+
+## Patterns to flag
+
+- **No assertion at all.** The test calls the code and finishes without an
+  \`expect\`/\`assert\` — it only checks "did not throw".
+- **Tautological assertions.** \`expect(x).toBe(x)\`, asserting a literal against
+  itself, or asserting on a value the test itself just computed the same way
+  the production code does.
+- **Truthiness-only checks.** \`expect(result).toBeTruthy()\` / \`toBeDefined()\`
+  where the exact value, shape, or field matters — a wrong-but-truthy result
+  slips through.
+- **Asserting the mock, not the outcome.** Only \`toHaveBeenCalled\` with no
+  assertion on returned data, persisted state, or response.
+- **Snapshot as a stand-in** for a specific behavioural assertion on
+  correctness-critical logic.
+
+## How to check
+
+For each test in the diff, name the single behaviour it exists to protect,
+then confirm at least one assertion would fail if that behaviour were broken
+(value returned, state persisted, error thrown, response emitted). If no
+assertion would catch the regression, flag it with the test's file:line and
+state which behaviour is unguarded.`;
+
+// ---- Skills feature demo — manual skill bodies for "Security Reviewer" ----
+// Appended (in order) to the Skills / rules block of the security agent's prompt.
+
+export const INJECTION_GUARD_BODY = `# Injection guard
+
+Any place where untrusted input crosses into an interpreter — SQL, shell,
+HTML, a template, a NoSQL query, or a system path — is an injection sink.
+Flag sinks in the diff that build a command or query by string concatenation
+instead of a parameterised / escaped API.
+
+## Sinks to check
+
+- **SQL / query builders.** String-interpolated \`WHERE\`/\`ORDER BY\` clauses,
+  raw query fragments built from request fields. Require bound parameters.
+- **Shell / subprocess.** \`exec\`/\`spawn\` with a concatenated command line.
+  Require an argv array with no shell, or a strict allowlist.
+- **HTML / DOM.** \`dangerouslySetInnerHTML\`, \`innerHTML\`, or template output of
+  user data without contextual escaping → XSS.
+- **Path / filesystem.** A request-controlled segment joined into a path with
+  no traversal check (\`..\`) → path traversal.
+- **NoSQL / query objects.** Passing a raw request body as a query filter,
+  allowing operator injection (\`$where\`, \`$ne\`).
+
+## How to check
+
+For each sink, trace the interpolated value back to its source. If any part
+originates from a request (params, query, body, headers, uploaded content)
+and reaches the interpreter without parameterisation or contextual escaping,
+report it: cite the sink's file:line, the tainted source, and the safe API to
+use instead.`;
+
+export const SECRETS_IN_CODE_GATE_BODY = `# Secrets in code gate
+
+Credentials belong in a secrets store, never in source, config committed to
+git, logs, or error responses. Flag any secret material introduced or exposed
+by the diff.
+
+## Patterns to flag
+
+- **Hard-coded credentials.** API keys, tokens, passwords, private keys, or
+  connection strings with embedded credentials assigned to a literal.
+- **Secrets in committed config.** Values in \`.env\`-style files, YAML, or JSON
+  that are tracked by git rather than injected at runtime.
+- **Secrets in logs.** Logging a whole request/headers/token, or a config
+  object that contains a secret, at any level.
+- **Secrets in responses / errors.** Echoing a token, stack trace with a
+  connection string, or internal config back to the client.
+- **Weak handling.** A secret read into a long-lived global, or compared with a
+  non-constant-time equality where timing matters.
+
+## How to check
+
+For each added constant, config entry, log call, and error path, ask whether
+the value is or contains credential material and whether it could reach git,
+a log sink, or a client. If so, flag it with the file:line and require it move
+behind the secrets provider (\`SecretsProvider\` in this codebase), be redacted
+in logs, and be excluded from responses.`;
+
+export const AUTHZ_BOUNDARY_CHECK_BODY = `# Authorization boundary check
+
+Authentication proves who the caller is; authorization proves they may touch
+this specific resource. Flag endpoints and data-access paths in the diff that
+check the former but not the latter.
+
+## Patterns to flag
+
+- **Missing object-level checks (IDOR).** A handler loads a resource by an
+  id from the request but never verifies the resource belongs to the caller's
+  workspace / tenant / user. In this codebase, every query must be scoped by
+  \`workspaceId\` — a lookup by bare id is a red flag.
+- **Missing function-level checks.** A privileged action (delete, admin
+  mutation, config change) with only an "is logged in" guard, no role/scope
+  check.
+- **Trusting client-supplied authority.** Reading a role, tenant, or
+  permission flag from the request body/query instead of the session.
+- **Broken ownership on nested routes.** \`/parent/:pid/child/:cid\` that scopes
+  by \`cid\` alone, letting a caller reach a child under a parent they don't own.
+
+## How to check
+
+For each new route or repository call, identify the resource and the caller's
+identity, then confirm the query filters by the caller's ownership scope
+(\`workspaceId\`) and that any privileged action re-checks role/permission. If a
+resource is reachable by id without an ownership predicate, report it: cite the
+handler/query file:line and the missing scope, and require the workspace-scoped
+lookup used elsewhere in the module.`;

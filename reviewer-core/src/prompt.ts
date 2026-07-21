@@ -60,6 +60,11 @@ export interface PromptParts {
    */
   callers?: string;
   /**
+   * Derived PR intent + scope block (untrusted — derived from author-controlled
+   * text). Rendered before the diff. Empty/undefined → section omitted.
+   */
+  intent?: string;
+  /**
    * The PR author's description/body (untrusted — author-controlled, a prime
    * injection vector). Delimiter-wrapped + truncated. Rendered right after the
    * task line so the model knows what the PR claims to do and why. Empty /
@@ -117,6 +122,9 @@ export function assemblePrompt(parts: PromptParts): AssembledPrompt {
       `## Callers of changed symbols\n${wrapUntrusted('callers', parts.callers)}`,
     );
   }
+  if (parts.intent && parts.intent.trim().length > 0) {
+    userSections.push(`## Intent\n${wrapUntrusted('intent', parts.intent)}`);
+  }
   userSections.push(`## Diff to review\n${wrapUntrusted('diff', parts.diff)}`);
 
   const user = userSections.join('\n\n');
@@ -134,6 +142,7 @@ export function assemblePrompt(parts: PromptParts): AssembledPrompt {
     callers: parts.callers ?? null,
     repo_map: parts.repoMap ?? null,
     pr_description: prDescription ?? null,
+    intent: parts.intent ?? null,
     user,
   };
 

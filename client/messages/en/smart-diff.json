@@ -1,0 +1,32 @@
+{
+  "sectionHeader": {
+    "title": "REVIEWER-ORDERED DIFF",
+    "subline": "{count} files · +{additions} −{deletions}"
+  },
+  "orderToggle": {
+    "smart": "Smart order",
+    "original": "Original order"
+  },
+  "roles": {
+    "core": {
+      "label": "Core",
+      "description": "The substance of the change — review closely"
+    },
+    "wiring": {
+      "label": "Wiring",
+      "description": "Hooks the core into the app"
+    },
+    "boilerplate": {
+      "label": "Boilerplate",
+      "description": "Generated / mechanical — skim"
+    }
+  },
+  "filesCount": "{count} files",
+  "findingsBadge": "{count} findings",
+  "mechanicalPlaceholder": "Mechanical changes — diff collapsed by default",
+  "severity": {
+    "CRITICAL": "blocker",
+    "WARNING": "warning",
+    "SUGGESTION": "suggestion"
+  }
+}

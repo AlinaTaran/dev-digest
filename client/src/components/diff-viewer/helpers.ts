@@ -1,5 +1,30 @@
 /** Pure helpers for the DiffViewer. */
-import { HUNK_HEADER_RE } from "./constants";
+import type { PrFile } from "@/lib/types";
+import { HUNK_HEADER_RE, MECHANICAL_PATTERNS } from "./constants";
+
+/** Collapse multiple `pr_files` rows for the same path into ONE file entry.
+ *  A PR's file list is NOT guaranteed unique per path — an import can yield
+ *  several diff fragments for one file (seen on PR #2, which carries two
+ *  `CLAUDE.md` rows). The viewer keys each card by `path`, so duplicates would
+ *  collide as React keys and crash the render. A file's diff belongs in one
+ *  card anyway, so we sum the +/- stats and concatenate the non-empty patch
+ *  fragments (each is a run of `@@` hunks, so joining stays parseable),
+ *  preserving first-seen order. */
+export function dedupeFilesByPath(files: PrFile[]): PrFile[] {
+  const byPath = new Map<string, PrFile>();
+  for (const f of files) {
+    const existing = byPath.get(f.path);
+    if (!existing) {
+      byPath.set(f.path, { ...f });
+      continue;
+    }
+    existing.additions += f.additions;
+    existing.deletions += f.deletions;
+    const patches = [existing.patch, f.patch].filter(Boolean) as string[];
+    existing.patch = patches.length > 0 ? patches.join("\n") : null;
+  }
+  return [...byPath.values()];
+}
 
 export interface Line {
   kind: "add" | "del" | "ctx" | "hunk";
@@ -51,4 +76,18 @@ export function parsePatch(patch: string | null | undefined): Line[] {
     }
   }
   return out;
+}
+
+/** Stable DOM id for a rendered line — the scroll target for a "N findings"
+ *  badge click. Not a valid CSS selector char-for-char (paths contain `/`), so
+ *  callers must use `document.getElementById`, never a `querySelector`. */
+export function anchorId(path: string, lineNo: number): string {
+  return `diff-line:${path}:${lineNo}`;
+}
+
+/** Lock files, `package.json`, generated output, and snapshots — files whose
+ *  diff is noise to a human reviewer. Used to collapse the real patch behind a
+ *  "Mechanical changes" placeholder unless the file actually has findings. */
+export function isMechanical(path: string): boolean {
+  return MECHANICAL_PATTERNS.some((re) => re.test(path));
 }

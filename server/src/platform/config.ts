@@ -36,6 +36,19 @@ const EnvSchema = z.object({
     (v) => (v === '' ? undefined : v),
     z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).optional(),
   ),
+  // Intent Layer external plan/spec URL fetching (WebFetchClient). Default OFF
+  // (opt-in): HttpWebFetchClient's SSRF guard (scheme allowlist, DNS-resolved
+  // private/reserved IP block via net.BlockList, no auto-following redirects
+  // into a blocked range, size cap, single-deadline timeout) closes the IP-
+  // literal and redirect-based SSRF vectors, but it validates the resolved IP
+  // and then lets the platform `fetch()` resolve the hostname AGAIN
+  // independently (no connection pinning) — a residual DNS-rebinding TOCTOU
+  // (attacker's DNS answers a safe IP for the guard's lookup, then a
+  // different, private IP for the actual connect a moment later) that can't
+  // be fully closed without pinning the validated IP onto the connection
+  // (e.g. an `undici` dispatcher with a custom `connect.lookup`), which this
+  // codebase doesn't depend on. Set EXTERNAL_FETCH_ENABLED=true to opt in.
+  EXTERNAL_FETCH_ENABLED: z.string().optional(),
 });
 
 export type AppConfig = {
@@ -59,6 +72,17 @@ export type AppConfig = {
    * EXACTLY like the ripgrep-only baseline.
    */
   repoIntelEnabled: boolean;
+  /**
+   * Whether the Intent Layer's WebFetchClient may perform external plan/spec
+   * URL fetches at all. Default OFF (opt-in) — despite HttpFetchClient's SSRF
+   * guard (adapters/http/web-fetch.ts), there's a residual DNS-rebinding
+   * TOCTOU (the guard resolves+validates the hostname, then the platform
+   * `fetch()` resolves it again independently with no pinning) that can't be
+   * fully closed without connection pinning (needs an `undici` dispatcher
+   * with a custom `connect.lookup`, not currently a dependency here). Set
+   * EXTERNAL_FETCH_ENABLED=true to opt in with that residual risk understood.
+   */
+  externalFetchEnabled: boolean;
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -77,5 +101,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     webOrigin: `http://localhost:${parsed.WEB_PORT}`,
     embeddingsEnabled: parsed.EMBEDDINGS_ENABLED === 'true',
     repoIntelEnabled: parsed.REPO_INTEL_ENABLED !== 'false',
+    externalFetchEnabled: parsed.EXTERNAL_FETCH_ENABLED === 'true',
   };
 }

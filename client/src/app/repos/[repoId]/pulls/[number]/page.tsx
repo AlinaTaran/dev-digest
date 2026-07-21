@@ -91,7 +91,7 @@ export default function PRDetailPage() {
       />
 
       <div style={bodyWrap}>
-        {p.tab === "overview" && <OverviewTab prBody={pr.body} />}
+        {p.tab === "overview" && <OverviewTab prId={p.prId} prBody={pr.body} />}
 
         {p.tab === "findings" && (
           <FindingsTab
@@ -102,6 +102,7 @@ export default function PRDetailPage() {
             prCommits={pr.commits}
             repoFullName={p.repoFullName}
             headSha={pr.head_sha}
+            targetFindingId={p.targetFindingId}
             onOpenTrace={(id) => p.setTrace(id)}
             onDelete={(id) => {
               if (window.confirm("Delete this run from history? (its logs are removed too)"))
@@ -121,6 +122,7 @@ export default function PRDetailPage() {
             filesCount={pr.files_count}
             files={pr.files}
             canComment={pr.status === "open"}
+            onFindingClick={p.goToFinding}
           />
         )}
       </div>

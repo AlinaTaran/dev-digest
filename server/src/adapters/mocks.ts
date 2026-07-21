@@ -31,6 +31,8 @@ import type {
   AuthWorkspace,
   SecretsProvider,
   SecretKey,
+  WebFetchClient,
+  WebFetchResult,
 } from '@devdigest/shared';
 import { parseUnifiedDiff } from './git/diff-parser.js';
 
@@ -326,5 +328,34 @@ export class MockSecretsProvider implements SecretsProvider {
   constructor(private secrets: Partial<Record<string, string>> = {}) {}
   async get(key: SecretKey): Promise<string | undefined> {
     return this.secrets[key as string];
+  }
+}
+
+// ---------- Mock WebFetch ----------
+/**
+ * In-memory fake for the Intent Layer's SSRF-guarded WebFetchClient. No real
+ * network, no SSRF logic — tests supply canned responses per URL. Mirrors the
+ * real adapter's contract: returns `null` when disabled or the URL has no
+ * fixture (simulating "blocked or failed").
+ */
+export class FakeWebFetchClient implements WebFetchClient {
+  public calls: string[] = [];
+
+  constructor(
+    private byUrl: Record<string, Partial<WebFetchResult> | undefined> = {},
+    private enabled = true,
+  ) {}
+
+  async fetch(url: string): Promise<WebFetchResult | null> {
+    this.calls.push(url);
+    if (!this.enabled) return null;
+    const fixture = this.byUrl[url];
+    if (!fixture) return null;
+    return {
+      url,
+      contentType: fixture.contentType ?? 'text/plain',
+      text: fixture.text ?? '',
+      truncated: fixture.truncated ?? false,
+    };
   }
 }

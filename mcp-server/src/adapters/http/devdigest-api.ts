@@ -65,8 +65,8 @@ const findingSchema = z.object({
 const reviewSchema = z.object({
   id: z.string(),
   run_id: z.string().nullish().transform((v) => v ?? null),
-  agent_id: z.string(),
-  agent_name: z.string(),
+  agent_id: z.string().nullish().transform((v) => v ?? null),
+  agent_name: z.string().nullish().transform((v) => v ?? ''),
   kind: z.string(),
   verdict: z
     .enum(['request_changes', 'approve', 'comment'])
@@ -86,6 +86,45 @@ const conventionSchema = z.object({
   evidence_line_start: z.number().nullish().transform((v) => v ?? null),
   evidence_line_end: z.number().nullish().transform((v) => v ?? null),
   status: z.string(),
+});
+
+const strList = z.array(z.string()).nullish().transform((v) => v ?? []);
+
+const blastSchema = z.object({
+  stats: z.object({
+    symbols: z.number().int(),
+    callers: z.number().int(),
+    endpoints: z.number().int(),
+    crons: z.number().int(),
+  }),
+  downstream: z
+    .array(
+      z.object({
+        symbol: z.string(),
+        file: z.string().nullish().transform((v) => v ?? ''),
+        kind: z.string().nullish().transform((v) => v ?? ''),
+        callers_total: z.number().int().nullish(),
+        callers: z
+          .array(
+            z.object({
+              name: z.string(),
+              file: z.string(),
+              line: z.number().int(),
+            }),
+          )
+          .nullish()
+          .transform((v) => v ?? []),
+        endpoints_affected: strList,
+        crons_affected: strList,
+      }),
+    )
+    .nullish()
+    .transform((v) => v ?? []),
+  impacted_endpoints: strList,
+  degraded: z.boolean().nullish().transform((v) => v ?? false),
+  reason: z.string().nullish().transform((v) => v ?? null),
+  /** Server-side per-symbol caller cap; absent on older servers (no extra slicing). */
+  max_callers_per_symbol: z.number().int().positive().nullish().transform((v) => v ?? null),
 });
 
 // ---------------------------------------------------------------------------
@@ -204,5 +243,15 @@ export function createHttpDevDigestApi(options: HttpApiOptions): DevDigestApiPor
       request('GET', `/pulls/${id(prId)}/reviews`, z.array(reviewSchema), signal),
     listConventions: (repoId, signal) =>
       request('GET', `/repos/${id(repoId)}/conventions`, z.array(conventionSchema), signal),
+    getBlast: async (prId, signal) => {
+      const b = await request('GET', `/pulls/${id(prId)}/blast`, blastSchema, signal);
+      return {
+        ...b,
+        downstream: b.downstream.map((d) => ({
+          ...d,
+          callers_total: d.callers_total ?? d.callers.length,
+        })),
+      };
+    },
   };
 }

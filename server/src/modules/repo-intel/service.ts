@@ -3,9 +3,9 @@
  *
  * Every method returns a DEGRADED-but-valid result (see types.ts header). The
  * only methods that do real work in T1 are:
- *   - `getBlastRadius`: best-effort port of blast/service.ts logic, mapped
- *     into the `BlastResult` shape (and always tagged `degraded: true,
- *     reason: 'no_data'`, because T1 has no persistent index yet).
+ *   - `getBlastRadius`: serves from the persistent index when built (per-symbol
+ *     cap, depth-2 reach, `source: 'index'`); otherwise a ripgrep best-effort
+ *     tagged `degraded: true` with the accurate `reason` and `source: 'fallback'`.
  *   - `getIndexState`: queries `repo_index_state` if the table exists (T2+),
  *     otherwise synthesises a degraded row so callers never throw.
  *
@@ -33,6 +33,7 @@ import type {
   BlastCallerRow,
   BlastChangedSymbol,
   BlastResult,
+  DegradedReason,
   FileRankRow,
   IndexResult,
   IndexState,
@@ -209,31 +210,70 @@ export class RepoIntelService implements RepoIntel {
   // -------------------------------------------------------------------------
 
   /**
-   * Best-effort blast over `container.codeIndex` — a faithful port of
-   * blast/service.ts mapped into the facade's `BlastResult` shape, then
-   * tagged `degraded: true` so consumers can branch.
+   * Blast radius for a set of changed files. NEVER throws.
    *
-   * Why "always degraded" in T1: there's no persistent rank/decl_file yet, so
-   * every caller gets `rank: 0` and HTTP impact is detected by re-reading the
-   * clone (not the index). T2 promotes this path to the persistent layer.
+   * Path + reason selection:
+   *   - flag off                 -> ripgrep fallback, `reason: 'flag_off'`
+   *   - index `full`             -> persistent, `degraded: false`
+   *   - index `partial`          -> persistent data, `degraded: true, reason: 'index_partial'`
+   *   - index `failed`           -> fallback, `reason: 'index_failed'`
+   *   - index `degraded`         -> fallback, with the index's own `degradedReason`
+   *   - no index row / error     -> fallback, `reason: 'no_data'`
+   * `source` says which path produced the data ('index' | 'fallback').
+   *
+   * The persistent path caps callers PER changed symbol (MAX_CALLERS_PER_SYMBOL,
+   * with the uncapped counts in `callerTotals`), excludes each symbol's own
+   * declaring file, and attributes endpoints/crons reachable within BFS_DEPTH
+   * hops (`impactByCallerFile` / `impactBySymbol`). The fallback path has no
+   * rank and no depth: every caller gets `rank: 0` and endpoints are found by
+   * re-reading the clone.
    */
   async getBlastRadius(repoId: string, changedFiles: string[]): Promise<BlastResult> {
-    // T3: serve from the persistent index when it's built. Falls through to the
-    // ripgrep best-effort below when the flag is off / index is absent.
-    if (this.container.config.repoIntelEnabled && changedFiles.length > 0) {
-      const persistent = await this.tryPersistentBlast(repoId, changedFiles);
-      if (persistent) return persistent;
+    let fallbackReason: DegradedReason = 'no_data';
+    if (!this.container.config.repoIntelEnabled) {
+      fallbackReason = 'flag_off';
+    } else if (changedFiles.length > 0) {
+      try {
+        const state = await this.repo.tryGetIndexState(repoId);
+        if (state?.status === 'full' || state?.status === 'partial') {
+          const persistent = await this.tryPersistentBlast(repoId, changedFiles);
+          if (state.status === 'partial') {
+            return { ...persistent, degraded: true, reason: 'index_partial' };
+          }
+          return persistent;
+        }
+        if (state?.status === 'failed') fallbackReason = 'index_failed';
+        else if (state?.status === 'degraded') {
+          fallbackReason = state.degradedReason ?? 'no_data';
+        }
+      } catch {
+        fallbackReason = 'index_failed';
+      }
     }
+    return this.fallbackBlast(repoId, changedFiles, fallbackReason);
+  }
 
+  /** Ripgrep best-effort over `container.codeIndex` (no persistent rank/decl_file). */
+  private async fallbackBlast(
+    repoId: string,
+    changedFiles: string[],
+    reason: DegradedReason,
+  ): Promise<BlastResult> {
     const empty: BlastResult = {
       changedSymbols: [],
       callers: [],
       impactedEndpoints: [],
+      source: 'fallback',
       degraded: true,
-      reason: 'no_data',
+      reason,
     };
 
-    const repo = await this.repo.getRepoBasics(repoId);
+    let repo;
+    try {
+      repo = await this.repo.getRepoBasics(repoId);
+    } catch {
+      return empty;
+    }
     if (!repo || !repo.clonePath || changedFiles.length === 0) return empty;
 
     const ref: RepoRef = { owner: repo.owner, name: repo.name };
@@ -298,27 +338,26 @@ export class RepoIntelService implements RepoIntel {
       changedSymbols,
       callers: callerRows,
       impactedEndpoints: [...endpoints],
+      source: 'fallback',
       degraded: true,
-      reason: 'no_data',
+      reason,
     };
   }
 
   /**
    * Persistent-index blast (T3): reads symbols / resolved references / file_rank
    * / file_facts straight from Postgres — NO clone parsing on the hot path.
-   * Returns `null` when the index isn't usable (caller falls back to ripgrep).
+   * The caller (`getBlastRadius`) only invokes this for a `full`/`partial` index.
    *
    * Callers are PRECISE: only references whose `decl_file` resolved to a changed
    * file count. That favours precision over recall — an ambiguous
    * (NULL decl_file) reference is not asserted as a caller.
+   *
+   * Hop 1 = direct callers (declaring file excluded, deduped, capped per
+   * symbol). Hops 2..BFS_DEPTH walk "who calls the enclosing function of a
+   * hop-1 caller" so endpoints/crons that sit behind a helper chain are reached.
    */
-  private async tryPersistentBlast(
-    repoId: string,
-    changedFiles: string[],
-  ): Promise<BlastResult | null> {
-    const state = await this.repo.tryGetIndexState(repoId);
-    if (!state || (state.status !== 'full' && state.status !== 'partial')) return null;
-
+  private async tryPersistentBlast(repoId: string, changedFiles: string[]): Promise<BlastResult> {
     // Changed symbols = declared in a changed file. Skip the qualified
     // `Class.method` dual-emit (the bare form already covers the name).
     const declRows = await this.repo.getSymbolRows(repoId, changedFiles);
@@ -335,59 +374,156 @@ export class RepoIntelService implements RepoIntel {
       nameSet.add(s.name);
     }
     if (nameSet.size === 0) {
-      return { changedSymbols, callers: [], impactedEndpoints: [], degraded: false };
+      return { changedSymbols, callers: [], impactedEndpoints: [], source: 'index', degraded: false };
     }
 
-    // Resolved cross-file callers.
-    const callerRows = await this.repo.getResolvedCallers(repoId, changedFiles, [...nameSet]);
-    const callerFiles = [...new Set(callerRows.map((c) => c.fromPath))];
+    // Hop 1: resolved cross-file callers, never the symbol's own declaring file.
+    const rawRows = await this.repo.getResolvedCallers(repoId, changedFiles, [...nameSet]);
+    const callerRows = rawRows.filter((c) => c.fromPath !== c.declFile);
+    const hop1Files = [...new Set(callerRows.map((c) => c.fromPath))];
+    const symsByFile = await this.symbolsByFile(repoId, hop1Files);
 
-    // Enclosing caller symbol from the callers' persistent symbol rows.
-    const callerSymRows = await this.repo.getSymbolRows(repoId, callerFiles);
-    const symsByFile = new Map<string, FullSymbolRow[]>();
-    for (const s of callerSymRows) {
-      const arr = symsByFile.get(s.path);
-      if (arr) arr.push(s);
-      else symsByFile.set(s.path, [s]);
-    }
-
-    const callers: BlastCallerRow[] = [];
+    // Dedupe by file|enclosing|viaSymbol, then group per changed symbol.
+    const groups = new Map<string, BlastCallerRow[]>();
     const seenCaller = new Set<string>();
     for (const c of callerRows) {
-      const enclosing =
-        enclosingFromRows(symsByFile.get(c.fromPath) ?? [], c.line) ??
-        c.fromPath.split('/').pop() ??
-        c.fromPath;
+      const enclosing = enclosingName(symsByFile, c.fromPath, c.line);
       const key = `${c.fromPath}|${enclosing}|${c.toSymbol}`;
       if (seenCaller.has(key)) continue;
       seenCaller.add(key);
-      callers.push({
+      const row: BlastCallerRow = {
         file: c.fromPath,
         symbol: enclosing,
         viaSymbol: c.toSymbol,
         line: c.line,
         rank: c.rank,
-      });
+      };
+      const g = groups.get(c.toSymbol);
+      if (g) g.push(row);
+      else groups.set(c.toSymbol, [row]);
     }
-    callers.sort((a, b) => b.rank - a.rank);
 
-    // Precomputed facts per caller file (endpoints + crons), so consumers can
-    // attribute them to the changed symbol whose callers live in that file.
-    const facts = await this.repo.getFileFacts(repoId, callerFiles);
-    const endpoints = new Set<string>();
+    const callerTotals: Record<string, number> = {};
+    const callers: BlastCallerRow[] = [];
+    const allHop1: BlastCallerRow[] = [];
+    for (const [name, group] of groups) {
+      group.sort((a, b) => b.rank - a.rank || a.file.localeCompare(b.file) || a.line - b.line);
+      callerTotals[name] = group.length;
+      allHop1.push(...group);
+      callers.push(...group.slice(0, MAX_CALLERS_PER_SYMBOL));
+    }
+    callers.sort((a, b) => b.rank - a.rank); // stable: ties keep per-symbol order
+
+    // Hops 2..BFS_DEPTH. `reach[f]` = files reached from hop-1 caller file `f`.
+    // Frontier = (file, enclosing name) of ALL hop-1 callers (before the cap);
+    // each entry remembers which hop-1 files it originates from.
+    const reach = new Map<string, Set<string>>();
+    let frontier = new Map<string, Set<string>>();
+    for (const c of allHop1) {
+      const key = `${c.file}|${c.symbol}`;
+      const origins = frontier.get(key);
+      if (origins) origins.add(c.file);
+      else frontier.set(key, new Set([c.file]));
+    }
+    const visited = new Set(frontier.keys());
+    for (let depth = 2; depth <= BFS_DEPTH && frontier.size > 0; depth += 1) {
+      const files = new Set<string>();
+      const names = new Set<string>();
+      for (const key of frontier.keys()) {
+        const [file, name] = splitFrontierKey(key);
+        files.add(file);
+        names.add(name);
+      }
+      const rows = await this.repo.getResolvedCallers(repoId, [...files], [...names]);
+      const hits = rows.filter(
+        (r) => r.fromPath !== r.declFile && frontier.has(`${r.declFile}|${r.toSymbol}`),
+      );
+      const needSyms = depth < BFS_DEPTH ? [...new Set(hits.map((r) => r.fromPath))] : [];
+      const nextSyms = await this.symbolsByFile(repoId, needSyms);
+      const next = new Map<string, Set<string>>();
+      for (const r of hits) {
+        const origins = frontier.get(`${r.declFile}|${r.toSymbol}`);
+        if (!origins) continue;
+        for (const o of origins) {
+          const set = reach.get(o);
+          if (set) set.add(r.fromPath);
+          else reach.set(o, new Set([r.fromPath]));
+        }
+        if (depth < BFS_DEPTH) {
+          const key = `${r.fromPath}|${enclosingName(nextSyms, r.fromPath, r.line)}`;
+          if (!next.has(key) && visited.has(key)) continue; // seen at an earlier hop
+          visited.add(key);
+          const set = next.get(key) ?? new Set<string>();
+          for (const o of origins) set.add(o);
+          next.set(key, set);
+        }
+      }
+      frontier = next;
+    }
+
+    // Precomputed facts (endpoints + crons) for hop-1 ∪ hop-2 files, read once.
+    const allFiles = new Set(hop1Files);
+    for (const set of reach.values()) for (const f of set) allFiles.add(f);
+    const facts = await this.repo.getFileFacts(repoId, [...allFiles]);
+    const ownFacts = new Map(facts.map((f) => [f.filePath, f]));
+
+    const union = (files: Iterable<string>): { endpoints: string[]; crons: string[] } => {
+      const endpoints = new Set<string>();
+      const crons = new Set<string>();
+      for (const f of files) {
+        const fact = ownFacts.get(f);
+        if (!fact) continue;
+        for (const e of fact.endpoints) endpoints.add(e);
+        for (const c of fact.crons) crons.add(c);
+      }
+      return { endpoints: [...endpoints], crons: [...crons] };
+    };
+
     const factsByFile: Record<string, { endpoints: string[]; crons: string[] }> = {};
-    for (const f of facts) {
-      factsByFile[f.filePath] = { endpoints: f.endpoints, crons: f.crons };
-      for (const e of f.endpoints) endpoints.add(e);
+    const impactByCallerFile: Record<string, { endpoints: string[]; crons: string[] }> = {};
+    for (const f of hop1Files) {
+      factsByFile[f] = union([f]);
+      impactByCallerFile[f] = union([f, ...(reach.get(f) ?? [])]);
+    }
+    const filesBySymbol = new Map<string, Set<string>>();
+    for (const c of allHop1) {
+      const set = filesBySymbol.get(c.viaSymbol);
+      if (set) set.add(c.file);
+      else filesBySymbol.set(c.viaSymbol, new Set([c.file]));
+    }
+    const impactBySymbol: Record<string, { endpoints: string[]; crons: string[] }> = {};
+    for (const [name, files] of filesBySymbol) {
+      const reached = new Set<string>(files);
+      for (const f of files) for (const r of reach.get(f) ?? []) reached.add(r);
+      impactBySymbol[name] = union(reached);
     }
 
     return {
       changedSymbols,
-      callers: callers.slice(0, MAX_CALLERS_PER_SYMBOL),
-      impactedEndpoints: [...endpoints],
+      callers,
+      impactedEndpoints: union(allFiles).endpoints,
       factsByFile,
+      callerTotals,
+      impactByCallerFile,
+      impactBySymbol,
+      source: 'index',
       degraded: false,
     };
+  }
+
+  /** Persistent symbol rows for `files`, grouped by path. */
+  private async symbolsByFile(
+    repoId: string,
+    files: string[],
+  ): Promise<Map<string, FullSymbolRow[]>> {
+    const byFile = new Map<string, FullSymbolRow[]>();
+    if (files.length === 0) return byFile;
+    for (const s of await this.repo.getSymbolRows(repoId, files)) {
+      const arr = byFile.get(s.path);
+      if (arr) arr.push(s);
+      else byFile.set(s.path, [s]);
+    }
+    return byFile;
   }
 
   /**
@@ -758,7 +894,17 @@ function isJunkPath(path: string): boolean {
   return JUNK_PATH_PATTERNS.some((p) => lower.includes(p));
 }
 
-/** Enclosing top-level (bare-name) symbol for a line, from persistent rows. */
+/** Enclosing top-level symbol of `line` in `file`, else the file's basename. */
+function enclosingName(symsByFile: Map<string, FullSymbolRow[]>, file: string, line: number): string {
+  return enclosingFromRows(symsByFile.get(file) ?? [], line) ?? file.split('/').pop() ?? file;
+}
+
+/** Frontier keys are `file|name`; names never contain `|`, paths rarely do — split on the LAST one. */
+function splitFrontierKey(key: string): [string, string] {
+  const i = key.lastIndexOf('|');
+  return [key.slice(0, i), key.slice(i + 1)];
+}
+
 function enclosingFromRows(rows: FullSymbolRow[], line: number): string | null {
   const hit = rows
     .filter((s) => !s.name.includes('.') && (s.line ?? 0) <= line)

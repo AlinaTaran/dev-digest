@@ -1,6 +1,7 @@
 import type { FakeDevDigestApi } from '../../src/adapters/mocks';
 import type {
   Agent,
+  Blast,
   Convention,
   Finding,
   Pull,
@@ -89,3 +90,35 @@ export function seedWorld(api: FakeDevDigestApi): void {
   api.pulls[REPO_ID] = [makePull()];
   api.agents = [makeAgent()];
 }
+
+export const makeBlast = (o: Partial<Blast> = {}): Blast => ({
+  stats: { symbols: 2, callers: 2, endpoints: 2, crons: 1 },
+  downstream: [
+    {
+      symbol: 'reviewToDto',
+      file: 'server/src/modules/reviews/helpers.ts',
+      kind: 'function',
+      callers_total: 2,
+      callers: [
+        { name: 'listReviews', file: 'server/src/modules/reviews/service.ts', line: 57 },
+        { name: 'executeRun', file: 'server/src/modules/reviews/run-executor.ts', line: 211 },
+      ],
+      endpoints_affected: ['GET /pulls/:id/reviews', 'POST /pulls/:id/review'],
+      crons_affected: ['job:review-run'],
+    },
+    {
+      symbol: 'parseX',
+      file: 'src/x.ts',
+      kind: 'function',
+      callers_total: 0,
+      callers: [],
+      endpoints_affected: [],
+      crons_affected: [],
+    },
+  ],
+  impacted_endpoints: ['GET /pulls/:id/reviews', 'POST /pulls/:id/review'],
+  degraded: false,
+  reason: null,
+  max_callers_per_symbol: null,
+  ...o,
+});

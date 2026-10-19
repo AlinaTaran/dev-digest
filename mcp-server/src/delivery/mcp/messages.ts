@@ -1,6 +1,7 @@
 import { isDomainError } from '../../domain/errors';
 import type { LoggerPort } from '../../domain/ports';
 import type { Hint } from '../../domain/types';
+import { oneLine } from './sanitize';
 
 export interface MessageContext {
   apiUrl: string;
@@ -27,8 +28,10 @@ export function renderHint(hint: Hint, ctx: MessageContext): string {
       return `No agents configured. Create one at ${ctx.webUrl}/agents.`;
     case 'NO_CONVENTIONS':
       return `No accepted conventions for ${hint.repo} (${hint.pending} pending). Open ${ctx.webUrl}/conventions, run Extract, and accept rules.`;
-    case 'BLAST_STUB':
-      return 'Blast radius is not implemented yet (planned from repo-intel). Do not retry; use get_findings for review impact.';
+    case 'BLAST_DEGRADED':
+      return `Index for ${hint.repo} is incomplete (${hint.reason ?? 'unknown'}); callers may be missing. Open ${ctx.webUrl}/repos/${hint.repo_id}/pulls/${hint.pr}, click Resync in the Blast radius block, wait ~1 min, then call get_blast_radius again.`;
+    case 'BLAST_TRUNCATED':
+      return `Showing ${hint.shown} of ${hint.total} changed symbols (highest-ranked first). Open the PR Overview in DevDigest for the full map.`;
   }
 }
 
@@ -87,7 +90,7 @@ export function describeError(
     case 'AGENT_DISABLED':
       return `Agent "${str(d.name)}" is disabled. Enable it at ${ctx.webUrl}/agents, or call list_agents and choose an enabled agent.`;
     case 'RUN_FAILED': {
-      const reason = typeof d.error === 'string' && d.error !== '' ? clip(d.error, 300) : 'no reason recorded';
+      const reason = typeof d.error === 'string' && d.error !== '' ? clip(oneLine(d.error), 300) : 'no reason recorded';
       const keyHint = KEY_ERROR.test(str(d.error))
         ? ` Configure the model provider key in DevDigest Settings (${ctx.webUrl}/settings), then run again.`
         : '';

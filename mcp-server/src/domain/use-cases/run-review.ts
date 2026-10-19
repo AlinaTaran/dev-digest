@@ -69,13 +69,17 @@ export function createRunReview(deps: RunReviewDeps): RunReview {
           if (Number.isFinite(retry)) waitMs = Math.max(waitMs, retry * 1000);
         } else if (TRANSIENT.has(err.code)) {
           logger.warn('transient error while polling run', { run_id: runId, code: err.code });
-        } else {
+        } else if (err.code === 'RUN_FAILED' || err.code === 'REVIEW_MISSING') {
           throw err;
+        } else {
+          // The run is already started: never surface an error without its run_id.
+          logger.warn('non-terminal error while polling run', { run_id: runId, code: err.code });
+          return running();
         }
       }
 
       if (clock.now() - startedAt >= runTimeoutMs) break;
-      await clock.sleep(waitMs, signal);
+      await clock.sleep(Math.min(waitMs, Math.max(0, runTimeoutMs - (clock.now() - startedAt))), signal);
       if (clock.now() - startedAt >= runTimeoutMs) break;
     }
     return running();

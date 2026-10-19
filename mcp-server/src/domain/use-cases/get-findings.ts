@@ -20,7 +20,7 @@ export interface GetFindingsInput {
 export type GetFindings = (input: GetFindingsInput, signal?: AbortSignal) => Promise<ReviewResult>;
 
 function matchesAgent(review: Review, agent: string): boolean {
-  return review.agent_id === agent || review.agent_name.trim().toLowerCase() === agent.trim().toLowerCase();
+  return review.agent_id === agent || review.agent_name?.trim().toLowerCase() === agent.trim().toLowerCase();
 }
 
 /** Latest (or run_id-pinned) review of a PR, shaped for the caller. Never starts a run. */
@@ -51,6 +51,9 @@ export function createGetFindings({ api }: UseCaseDeps): GetFindings {
       }
       if (run.status === 'failed' || run.status === 'cancelled') {
         throw new DomainError('RUN_FAILED', { run_id: runId, status: run.status, error: run.error });
+      }
+      if (run.status === 'done') {
+        throw new DomainError('REVIEW_MISSING', { run_id: runId, repo: repo.full_name, pr: pull.number });
       }
       return runningResult({
         repo: repo.full_name,

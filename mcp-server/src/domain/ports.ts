@@ -6,6 +6,7 @@ import type {
   Review,
   RunSummary,
   StartedRun,
+  Blast,
 } from './types';
 
 /**
@@ -25,6 +26,8 @@ export interface DevDigestApiPort {
   /** Full history, newest first. */
   listReviews(prId: string, signal?: AbortSignal): Promise<Review[]>;
   listConventions(repoId: string, signal?: AbortSignal): Promise<Convention[]>;
+  /** Blast-radius map of a PR, read from the repo-intel index (no LLM, no re-parse). */
+  getBlast(prId: string, signal?: AbortSignal): Promise<Blast>;
 }
 
 export interface ClockPort {

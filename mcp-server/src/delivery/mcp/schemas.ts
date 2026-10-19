@@ -127,10 +127,30 @@ export const getConventionsOutput = z.object({
 });
 
 export const getBlastRadiusOutput = z.object({
-  status: z.literal('not_implemented'),
   repo: z.string(),
   pr: z.number().int(),
-  message: z.string(),
+  degraded: z.boolean(),
+  reason: nullableText('Why the index is incomplete'),
+  stats: z.object({
+    symbols: z.number().int(),
+    callers: z.number().int(),
+    endpoints: z.number().int(),
+    crons: z.number().int(),
+  }),
+  symbols: z.array(
+    z.object({
+      name: z.string(),
+      kind: z.string(),
+      file: z.string(),
+      callers_total: z.number().int(),
+      callers: z.array(z.object({ name: z.string(), at: z.string() })),
+      endpoints: z.array(z.string()),
+      crons: z.array(z.string()),
+    }),
+  ),
+  impacted_endpoints: z.array(z.string()),
+  truncated: z.boolean(),
+  next: z.string().optional(),
 });
 
 // ---------------------------------------------------------------------------

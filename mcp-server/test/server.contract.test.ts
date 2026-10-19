@@ -69,9 +69,9 @@ const EXPECTED: Record<
     annotations: READ_ONLY,
   },
   get_blast_radius: {
-    title: 'PR blast radius (not implemented)',
+    title: 'Get PR blast radius',
     description:
-      'NOT IMPLEMENTED YET (stub): will show code affected by a PR. Currently always returns status not_implemented — do not retry.',
+      'Get the blast radius of a GitHub PR from DevDigest: changed symbols, their callers (file:line), affected endpoints and crons. Same map as the PR Overview tab.',
     params: { repo: REPO, pr: PR },
     required: ['repo', 'pr'],
     annotations: READ_ONLY,

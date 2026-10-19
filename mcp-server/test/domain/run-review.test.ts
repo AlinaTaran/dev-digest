@@ -66,6 +66,25 @@ describe('runReview use case', () => {
     expect(clock.sleeps[0]).toBe(7000);
   });
 
+  it('returns a non-error running result (with run_id) on non-terminal polling errors', async () => {
+    for (const code of ['BAD_RESPONSE', 'API_VALIDATION'] as const) {
+      const { api, run } = setup();
+      api.enqueue('listRuns', new DomainError(code, { path: '/x', apiUrl: '' }));
+      const res = await run(input);
+      expect(res.status).toBe('running');
+      expect(res.run_id).toBe(RUN_ID);
+      expect(res.hint?.code).toBe('NEXT_POLL');
+    }
+  });
+
+  it('clamps each sleep to the remaining budget', async () => {
+    const { api, clock, run } = setup({ pollIntervalMs: 4000, runTimeoutMs: 10_000 });
+    api.runs[PR_ID] = [makeRun({ status: 'running' })];
+    const res = await run(input);
+    expect(res.status).toBe('running');
+    expect(clock.sleeps).toEqual([4000, 4000, 2000]);
+  });
+
   it('throws RUN_FAILED for failed runs', async () => {
     const { api, run } = setup();
     api.runs[PR_ID] = [makeRun({ status: 'failed', error: 'OPENAI_API_KEY missing' })];

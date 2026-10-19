@@ -14,7 +14,7 @@ No product code in `server/`, `client/`, `reviewer-core/`, `e2e/` changes.
   timeout return a **non-error** `{status:"running", run_id, next}`.
 - PR not in DB → auto-sync via `GET /repos/:id/pulls` (it upserts from GitHub when a token is set).
 - `get_conventions` → only `status === "accepted"` rows from `GET /repos/:id/conventions` (L02).
-- `get_blast_radius` → stub returning `{status:"not_implemented"}`, makes no API calls, `isError` false.
+- `get_blast_radius` → real: reads `GET /pulls/:id/blast` (the PR Overview map, repo-intel index, no LLM). Degraded index / no callers are normal results (`isError` false) with a `next` hint.
 - Onion architecture (skill `onion-architecture`) — see §2.
 
 User's four practices (must stay traceable): **result, not operation** · **flat arguments** ·
@@ -121,7 +121,7 @@ Do not paraphrase, shorten, or add examples. Changes only via updating this spec
 | `run_agent_on_pr` | Run DevDigest review on a PR | Run a DevDigest reviewer agent on a GitHub PR and return its verdict and findings. Waits up to ~100s; if still running, returns run_id for get_findings. |
 | `get_findings` | Get DevDigest review findings | Get verdict and findings of an existing DevDigest review on a PR (latest, or by run_id). Filter by min severity; detailed adds rationale. |
 | `get_conventions` | Get repo conventions | Get accepted coding conventions of a repo from DevDigest (rule, category, file:line). Use before writing or reviewing code there. |
-| `get_blast_radius` | PR blast radius (not implemented) | NOT IMPLEMENTED YET (stub): will show code affected by a PR. Currently always returns status not_implemented — do not retry. |
+| `get_blast_radius` | Get PR blast radius | Get the blast radius of a GitHub PR from DevDigest: changed symbols, their callers (file:line), affected endpoints and crons. Same map as the PR Overview tab. |
 
 Parameters — `.describe()` VERBATIM, defined once in `src/delivery/mcp/schemas.ts`:
 
@@ -165,7 +165,7 @@ CRITICAL 1 · WARNING 3 · SUGGESTION 5
 - `list_agents` → `{agents:[{id, name, description (≤160, "" if null), enabled}], count}`; enabled first, then by name. Empty list → not an error, `next` hint.
 - `run_agent_on_pr` / `get_findings` → `ReviewResult`. Findings sorted CRITICAL→SUGGESTION, cap = `limit` (run_agent_on_pr: 20), `truncated` + `next` narrowing hint when capped.
 - `get_conventions` → `{repo, conventions:[{rule (≤300), category, evidence: "path:line"|"path"}], count, total_accepted, pending, truncated, next?}`; sorted by category, rule.
-- `get_blast_radius` → `{status: 'not_implemented', repo, pr, message}`.
+- `get_blast_radius` → `{repo, pr, degraded, reason: string|null, stats:{symbols,callers,endpoints,crons}, symbols:[{name, kind, file, callers_total, callers:[{name, at:"file:line"}], endpoints, crons}], impacted_endpoints, truncated, next?}`. Stats pass through from the API unchanged; ≤20 callers per symbol, ≤30 symbols (`truncated`); text shows ≤5 callers per symbol.
 
 ### 4.4 Algorithms (domain use cases)
 
@@ -192,7 +192,7 @@ resolveRepo → resolvePr → `GET /pulls/:prId/reviews`, keep `kind === 'review
 
 `getConventions({repo, category?, limit=50})`: resolveRepo → `GET /repos/:id/conventions` → accepted only → optional case-insensitive category filter → sort → limit. Zero accepted → non-error, `conventions: []`, `next: NO_CONVENTIONS` (with pending count).
 
-`getBlastRadius({repo, pr})`: no API calls; returns `{status:'not_implemented', repo, pr, message: BLAST_STUB}`.
+`getBlastRadius({repo, pr})`: resolveRepo → resolvePr → `GET /pulls/:prId/blast`; server order kept; callers capped at 20 per symbol (`callers_total` kept), symbols capped at 30 (`truncated` + `BLAST_TRUNCATED`); `degraded` → `BLAST_DEGRADED` hint (takes priority when both apply). Never an `isError` for degraded or zero callers; unknown PR → `PR_NOT_FOUND` listing known PRs.
 
 ## 5. Error / hint catalog (`delivery/mcp/messages.ts`)
 
@@ -218,7 +218,8 @@ resolveRepo → resolvePr → `GET /pulls/:prId/reviews`, keep `kind === 'review
 | hint `NEXT_POLL` | `Review still running. Call get_findings with repo="{repo}", pr={pr}, run_id="{run_id}" in ~30s.` |
 | hint `NARROW` | `Showing {n} of {total}. Narrow with severity="CRITICAL" or a higher limit (max {max}).` |
 | hint `NO_CONVENTIONS` | `No accepted conventions for {repo} ({pending} pending). Open {webUrl}/conventions, run Extract, and accept rules.` |
-| hint `BLAST_STUB` | `Blast radius is not implemented yet (planned from repo-intel). Do not retry; use get_findings for review impact.` |
+| hint `BLAST_DEGRADED` | `Index for {repo} is incomplete ({reason\|unknown}); callers may be missing. Open {webUrl}/repos/{repo_id}/pulls/{pr}, click Resync in the Blast radius block, wait ~1 min, then call get_blast_radius again.` |
+| hint `BLAST_TRUNCATED` | `Showing {shown} of {total} changed symbols (highest-ranked first). Open the PR Overview in DevDigest for the full map.` |
 | internal | `Internal error in devdigest MCP tool "{name}". See the MCP server stderr log.` (log details to stderr) |
 
 ## 6. Tasks

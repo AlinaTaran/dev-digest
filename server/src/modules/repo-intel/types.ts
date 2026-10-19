@@ -82,6 +82,14 @@ export interface BlastResult {
    * Present on the persistent (non-degraded) path; absent otherwise.
    */
   factsByFile?: Record<string, { endpoints: string[]; crons: string[] }>;
+  /** Distinct hop-1 callers per changed symbol name, BEFORE the per-symbol cap. */
+  callerTotals?: Record<string, number>;
+  /** Endpoints/crons reachable from each hop-1 caller FILE within BFS_DEPTH hops (own facts ∪ hop-2 callers' facts). */
+  impactByCallerFile?: Record<string, { endpoints: string[]; crons: string[] }>;
+  /** Union of impactByCallerFile over ALL (uncapped) callers of each changed symbol name. */
+  impactBySymbol?: Record<string, { endpoints: string[]; crons: string[] }>;
+  /** Which path produced the result. */
+  source?: 'index' | 'fallback';
   degraded?: boolean;
   reason?: DegradedReason;
 }

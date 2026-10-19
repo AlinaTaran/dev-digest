@@ -122,6 +122,55 @@ describe('http DevDigest API adapter', () => {
     expect(conventions[0]?.evidence_line_start).toBeNull();
   });
 
+  it('maps GET /pulls/:id/blast leniently; 404 -> API_VALIDATION; bad body -> BAD_RESPONSE', async () => {
+    const { api, requests } = makeApi((url) => {
+      if (url.endsWith('/pulls/p1/blast'))
+        return json({
+          stats: { symbols: 1, callers: 1, endpoints: 0, crons: 0 },
+          downstream: [
+            {
+              symbol: 's',
+              file: 'a.ts',
+              kind: 'function',
+              rank: 0.5,
+              callers: [{ name: 'c', file: 'b.ts', line: 3, rank: 0.5, endpoints: [], crons: [] }],
+              endpoints_affected: [],
+              crons_affected: [],
+            },
+          ],
+          degraded: true,
+          reason: 'index_partial',
+          indexed_sha: 'abc',
+          max_callers_per_symbol: 20,
+        });
+      if (url.endsWith('/pulls/p2/blast')) return json({ nope: true });
+      return json({ error: { code: 'not_found', message: 'Pull request not found' } }, 404);
+    });
+
+    const blast = await api.getBlast('p1');
+    expect(requests[0]?.url).toBe(`${API}/pulls/p1/blast`);
+    expect(blast).toEqual({
+      stats: { symbols: 1, callers: 1, endpoints: 0, crons: 0 },
+      downstream: [
+        {
+          symbol: 's',
+          file: 'a.ts',
+          kind: 'function',
+          callers_total: 1,
+          callers: [{ name: 'c', file: 'b.ts', line: 3 }],
+          endpoints_affected: [],
+          crons_affected: [],
+        },
+      ],
+      impacted_endpoints: [],
+      degraded: true,
+      reason: 'index_partial',
+      max_callers_per_symbol: 20,
+    });
+    expect((await codeOf(api.getBlast('p9'))).code).toBe('API_VALIDATION');
+    expect((await codeOf(api.getBlast('p2'))).code).toBe('BAD_RESPONSE');
+  });
+
   it('maps an unreachable server to API_UNREACHABLE', async () => {
     const { api } = makeApi(() => {
       throw new TypeError('fetch failed');
@@ -213,5 +262,19 @@ describe('http DevDigest API adapter', () => {
     const { api, requests } = makeApi(() => json({}, 429, { 'retry-after': '1' }));
     await codeOf(api.startReview('p', 'a'));
     expect(requests).toHaveLength(1);
+  });
+
+  it('accepts reviews of deleted agents (null agent_id/agent_name)', async () => {
+    const { api } = makeApi(() =>
+      json([
+        { id: 'rv1', run_id: 'run1', agent_id: null, kind: 'review', findings: [] },
+        { id: 'rv2', run_id: 'run2', agent_id: null, agent_name: null, kind: 'review', findings: [] },
+      ]),
+    );
+    const reviews = await api.listReviews('p1');
+    expect(reviews.map((r) => [r.agent_id, r.agent_name])).toEqual([
+      [null, ''],
+      [null, ''],
+    ]);
   });
 });

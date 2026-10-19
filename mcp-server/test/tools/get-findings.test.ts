@@ -71,6 +71,21 @@ describe('get_findings', () => {
     expect(textOf(await h.callTool('get_findings', args))).toContain('run_agent_on_pr');
   });
 
+  it('still works with a deleted-agent review and a name filter', async () => {
+    await start([makeReview({ run_id: 'gone', agent_id: null, agent_name: '' }), makeReview({ run_id: 'b' })]);
+    const latest = await h.callTool('get_findings', args);
+    expect((latest.structuredContent as { run_id: string }).run_id).toBe('gone');
+    const byName = await h.callTool('get_findings', { ...args, agent: 'security' });
+    expect((byName.structuredContent as { run_id: string }).run_id).toBe('b');
+  });
+
+  it('errors with REVIEW_MISSING when the pinned run is done but has no review', async () => {
+    await start([makeReview({ run_id: 'other' })]);
+    h.api.runs[PR_ID] = [makeRun({ run_id: LIVE, status: 'done' })];
+    const res = await h.callTool('get_findings', { ...args, run_id: LIVE });
+    expect(res.isError).toBe(true);
+  });
+
   it('severity excludes lower findings while counts stay full; limit truncates with hint', async () => {
     await start([
       makeReview({

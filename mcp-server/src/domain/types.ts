@@ -60,7 +60,9 @@ export interface Finding {
 export interface Review {
   id: string;
   run_id: string | null;
-  agent_id: string;
+  /** Null when the agent was deleted. */
+  agent_id: string | null;
+  /** '' when the agent was deleted. */
   agent_name: string;
   /** `summary` rows are ignored by get_findings; `review` rows carry findings. */
   kind: string;
@@ -90,7 +92,14 @@ export type Hint =
   | { code: 'NARROW'; shown: number; total: number; max: number }
   | { code: 'NO_AGENTS' }
   | { code: 'NO_CONVENTIONS'; repo: string; pending: number }
-  | { code: 'BLAST_STUB' };
+  | {
+      code: 'BLAST_DEGRADED';
+      repo: string;
+      repo_id: string;
+      pr: number;
+      reason: string | null;
+    }
+  | { code: 'BLAST_TRUNCATED'; shown: number; total: number };
 
 // ---------------------------------------------------------------------------
 // Use-case result DTOs
@@ -164,9 +173,54 @@ export interface ConventionsResult {
   hint?: Hint;
 }
 
+export interface BlastStats {
+  symbols: number;
+  callers: number;
+  endpoints: number;
+  crons: number;
+}
+
+/** Subset of `GET /pulls/:id/blast` that this server reads. */
+export interface Blast {
+  stats: BlastStats;
+  downstream: {
+    symbol: string;
+    file: string;
+    kind: string;
+    callers_total: number;
+    callers: { name: string; file: string; line: number }[];
+    endpoints_affected: string[];
+    crons_affected: string[];
+  }[];
+  impacted_endpoints: string[];
+  degraded: boolean;
+  reason: string | null;
+  /** Per-symbol caller cap applied by the API; null when the API did not report one. */
+  max_callers_per_symbol: number | null;
+}
+
+export interface BlastSymbolOut {
+  name: string;
+  kind: string;
+  file: string;
+  callers_total: number;
+  /** `at` is "file:line". */
+  callers: { name: string; at: string }[];
+  endpoints: string[];
+  crons: string[];
+}
+
 export interface BlastRadiusResult {
-  status: 'not_implemented';
+  /** owner/name */
   repo: string;
   pr: number;
-  hint: Hint;
+  degraded: boolean;
+  reason: string | null;
+  /** Passed through from the API unchanged (equals the PR Overview tab). */
+  stats: BlastStats;
+  symbols: BlastSymbolOut[];
+  impacted_endpoints: string[];
+  /** True when changed symbols were capped at MAX_SYMBOLS. */
+  truncated: boolean;
+  hint?: Hint;
 }

@@ -50,7 +50,7 @@ export function createContainer(config: Config, overrides: ContainerOverrides = 
       }),
       getFindings: createGetFindings(deps),
       getConventions: createGetConventions(deps),
-      getBlastRadius: createGetBlastRadius(),
+      getBlastRadius: createGetBlastRadius(deps),
     },
   };
 }

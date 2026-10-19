@@ -13,17 +13,20 @@ export const getBlastRadiusTool: ToolDefinition<
 > = {
   name: 'get_blast_radius',
   config: {
-    title: 'PR blast radius (not implemented)',
+    title: 'Get PR blast radius',
     description:
-      'NOT IMPLEMENTED YET (stub): will show code affected by a PR. Currently always returns status not_implemented — do not retry.',
+      'Get the blast radius of a GitHub PR from DevDigest: changed symbols, their callers (file:line), affected endpoints and crons. Same map as the PR Overview tab.',
     inputSchema: getBlastRadiusInput,
     outputSchema: getBlastRadiusOutput,
     annotations: READ_ONLY_ANNOTATIONS,
   },
-  async handler(args, container) {
+  async handler(args, container, extra) {
     const ctx = container.config;
     try {
-      const result = await container.useCases.getBlastRadius({ repo: args.repo, pr: args.pr });
+      const result = await container.useCases.getBlastRadius(
+        { repo: args.repo, pr: args.pr },
+        extra.signal,
+      );
       return successResult(renderBlastRadius(result, ctx), toBlastRadiusOutput(result, ctx));
     } catch (err) {
       return errorResult(describeError(err, 'get_blast_radius', ctx, container.logger));

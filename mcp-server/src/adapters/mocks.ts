@@ -8,6 +8,7 @@ import type {
   Review,
   RunSummary,
   StartedRun,
+  Blast,
 } from '../domain/types';
 
 export type ApiMethod = keyof DevDigestApiPort;
@@ -24,7 +25,7 @@ interface Call {
  * Scriptable in-memory DevDigestApiPort for tests.
  *
  * - Data lives in the public stores (`agents`, `repos`, `pulls[repoId]`, `runs[prId]`,
- *   `reviews[prId]`, `conventions[repoId]`); methods read from them.
+ *   `reviews[prId]`, `conventions[repoId]`, `blasts[prId]`); methods read from them.
  * - `enqueue(method, ...outcomes)` overrides the next N calls of `method` (FIFO); once
  *   drained, the method falls back to the stores. An `Error` outcome is thrown
  *   (use `new DomainError(...)`); a function outcome is called with the call args.
@@ -38,6 +39,7 @@ export class FakeDevDigestApi implements DevDigestApiPort {
   runs: Record<string, RunSummary[]> = {};
   reviews: Record<string, Review[]> = {};
   conventions: Record<string, Convention[]> = {};
+  blasts: Record<string, Blast> = {};
   nextRunId = '00000000-0000-4000-8000-0000000000aa';
   readonly calls: Call[] = [];
 
@@ -97,6 +99,16 @@ export class FakeDevDigestApi implements DevDigestApiPort {
 
   async listConventions(repoId: string, signal?: AbortSignal): Promise<Convention[]> {
     return this.run('listConventions', [repoId, signal], () => this.conventions[repoId] ?? []);
+  }
+
+  async getBlast(prId: string, signal?: AbortSignal): Promise<Blast> {
+    return this.run('getBlast', [prId, signal], () => {
+      const blast = this.blasts[prId];
+      if (!blast) {
+        throw new DomainError('API_VALIDATION', { status: 404, message: 'Pull request not found' });
+      }
+      return blast;
+    });
   }
 }
 

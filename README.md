@@ -83,7 +83,7 @@ These are intentionally **not** in the starter — each lesson adds one back:
 | L01 | Run cost badge · severity filter on findings |
 | L02 | Skills in the product · Conventions extractor |
 | L03 | Intent layer · Smart Diff |
-| L04 | `devdigest-mcp` server · Blast Radius (reads `repo-intel`) |
+| L04 | `devdigest-mcp` server · Blast Radius (reads `repo-intel`; routes `GET /pulls/:id/blast`, `GET /pulls/:id/history`) |
 | L05 | Project Context Folder · Onboarding generator · PR Brief card |
 | L06 | Eval pipeline · Secret/Phantom gates · Plan Verifier · Export to CI |
 | L07 | Multi-agent review · Run Trace / Live Log · Persistent memory · per-agent stats |
@@ -138,7 +138,8 @@ cd ../client && pnpm install && pnpm dev               # web on :3000
 [`mcp-server/`](mcp-server/AGENTS.md) is a local stdio MCP server that lets Claude Code
 use DevDigest. It is a thin client of the running API and exposes 5 tools:
 `list_agents`, `run_agent_on_pr`, `get_findings`, `get_conventions`, and
-`get_blast_radius` (stub, not implemented yet).
+`get_blast_radius` (real: reads the API's `GET /pulls/:id/blast`; that route and
+`GET /pulls/:id/history` back the Blast radius block on the PR Overview tab).
 
 Setup:
 

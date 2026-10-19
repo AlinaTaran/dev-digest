@@ -7,12 +7,73 @@
   },
   "view": {
     "tree": "tree",
-    "graph": "graph"
+    "graph": "graph",
+    "toggleLabel": "Blast radius view"
   },
-  "callerCount": "{count} callers",
-  "noDownstream": "{count} changed symbol(s), no downstream callers found.",
+  "callerCount": "{count, plural, one {# caller} other {# callers}}",
+  "noDownstream": "{count, plural, one {# changed symbol} other {# changed symbols}}, no downstream callers found.",
   "graph": {
     "empty": "No downstream callers to graph.",
-    "ariaLabel": "Blast radius graph"
+    "ariaLabel": "Blast radius graph",
+    "ariaSummary": "Blast radius graph: {symbols} changed symbols, {callers} callers, {endpoints} endpoints, {crons} cron/jobs",
+    "legend": {
+      "symbol": "changed symbol",
+      "caller": "callers",
+      "endpoint": "endpoints affected",
+      "cron": "cron/jobs"
+    },
+    "more": "+{count} more",
+    "nodeSymbol": "Changed symbol {name}",
+    "nodeCaller": "Caller {name} at {location}",
+    "nodeEndpoint": "Endpoint {name}",
+    "nodeCron": "Cron {name}"
+  },
+  "title": "Blast radius",
+  "noCallers": "No callers found in the indexed code.",
+  "noSymbols": "No symbols are declared in the changed files.",
+  "showingFirst": "Showing top {shown} of {total} callers by rank (limit {max} per symbol).",
+  "depthNote": "Endpoints and crons traced up to {depth} call hops.",
+  "endpoints": "Endpoints",
+  "crons": "Cron / jobs",
+  "unattributed": "Endpoints reachable from the changed code",
+  "expand": "Expand {name}",
+  "collapse": "Collapse {name}",
+  "openCaller": "Open {location} on GitHub",
+  "error": {
+    "title": "Couldn't load blast radius",
+    "body": "The repo-intel index could not be read. Try again."
+  },
+  "degraded": {
+    "badge": "Index incomplete",
+    "reason": {
+      "flag_off": "Repo intelligence is turned off on this server.",
+      "index_failed": "Indexing failed for this repo.",
+      "index_partial": "Index is partial (indexing budget hit) — some callers may be missing.",
+      "repo_too_large": "Repo is too large to index fully.",
+      "no_data": "Repo is not indexed yet — showing a best-effort text search."
+    }
+  },
+  "resync": {
+    "button": "Resync",
+    "running": "Resyncing…",
+    "started": "Resync started — the map refreshes when indexing finishes.",
+    "timeout": "Resync is still running. Check back in a minute.",
+    "failed": "Couldn't start resync."
+  },
+  "history": {
+    "title": "Prior PRs touching these files",
+    "empty": "No prior PRs touched these files.",
+    "error": {
+      "title": "Couldn't load PR history",
+      "body": "Git history could not be read."
+    },
+    "touched": "Touched: {files}",
+    "merged": "merged {date}",
+    "openPr": "Open PR #{number} on GitHub",
+    "reason": {
+      "no_clone": "Repo isn't cloned locally, so history is unavailable.",
+      "shallow_history": "Only the latest commit is available locally — Resync to load history.",
+      "git_failed": "Couldn't read git history for these files."
+    }
   }
 }

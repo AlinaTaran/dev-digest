@@ -12,7 +12,7 @@ description: >-
 Per-module memory. Each package keeps an append-only `INSIGHTS.md` so the next session
 (human or agent) doesn't relearn what this one discovered.
 
-Files: `client/INSIGHTS.md` · `server/INSIGHTS.md` · `reviewer-core/INSIGHTS.md` · `e2e/INSIGHTS.md`.
+Files: `client/INSIGHTS.md` · `server/INSIGHTS.md` · `reviewer-core/INSIGHTS.md` · `e2e/INSIGHTS.md` · `mcp-server/INSIGHTS.md`.
 
 ## TOP RULE — append-only, never overwrite
 

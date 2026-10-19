@@ -67,11 +67,13 @@ here is a finding with the severity noted (mostly CRITICAL). See `severity.md`.
    (e.g. `server/node_modules` absent), skip the deterministic check, record a
    **MEDIUM** "onion gate not bootstrapped" note, and rely on the
    `onion-architecture` LLM lens (step 4) instead — do not treat the skip as a pass.
+   **MCP server gate** (if `mcp-server/**` changed): `cd mcp-server && npm run lint:arch`
+   (its own dependency-cruiser config). Non-zero exit = **CRITICAL**.
 2. **Typecheck** each affected package (`pnpm typecheck` in client/server; `npm run
-   build` = `tsc --noEmit` in reviewer-core). Type error = **CRITICAL**.
+   build` = `tsc --noEmit` in reviewer-core; `npm run typecheck` in mcp-server). Type error = **CRITICAL**.
 3. **Affected tests** (per root `CLAUDE.md`): server unit
    `pnpm exec vitest run --exclude '**/*.it.test.ts'`; client `pnpm test`;
-   reviewer-core/e2e their own. Failure = **CRITICAL**. Integration `.it.test.ts`
+   reviewer-core/e2e/mcp-server (`npm test`) their own. Failure = **CRITICAL**. Integration `.it.test.ts`
    only if Docker is up — otherwise record a MEDIUM "not verified" note.
 4. **"Do not touch" guard:** if the diff edits `server/clones/**` or
    `server/src/db/migrations/**` (generated) → **CRITICAL** (see `CLAUDE.md`).

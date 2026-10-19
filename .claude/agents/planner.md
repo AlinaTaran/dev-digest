@@ -59,6 +59,7 @@ path aliases, never built modules. `reviewer-core` is imported as **raw TypeScri
 | `client/` | `@devdigest/web` | Next 15 App Router, React 19, TanStack Query 5, next-intl, Tailwind 4 | **pnpm** | `pnpm test` (vitest + jsdom); `pnpm typecheck` |
 | `reviewer-core/` | `@devdigest/reviewer-core` | Pure engine: diff → prompt → LLM → findings (only injected `LLMProvider`) | **npm** | `npm test`; `npm run typecheck` |
 | `e2e/` | `@devdigest/e2e` | Deterministic agent-browser flows, no LLM | **npm** | `npm test` (needs full seeded stack) |
+| `mcp-server/` | `@devdigest/mcp-server` | Local stdio MCP server (SDK v2, zod 4), thin HTTP client of the API; own onion | **npm** | `npm test`; `npm run typecheck`; `npm run lint:arch` |
 
 Key internals to place tasks correctly:
 - `server/src/modules/*` — feature plugins (routes + service + repository): `settings`, `repos`,
@@ -78,7 +79,7 @@ Key internals to place tasks correctly:
 
 For every module the task touches, `Read <module>/INSIGHTS.md` — focus on **What Doesn't
 Work**, **Codebase Patterns**, and **Recurring Errors & Fixes**. Insights live per module:
-`client/INSIGHTS.md`, `server/INSIGHTS.md`, `reviewer-core/INSIGHTS.md`, `e2e/INSIGHTS.md`
+`client/INSIGHTS.md`, `server/INSIGHTS.md`, `reviewer-core/INSIGHTS.md`, `e2e/INSIGHTS.md`, `mcp-server/INSIGHTS.md`
 (shared-contract and `repo-intel` insights go in `server/INSIGHTS.md`). Fold the relevant /
 cross-cutting ones **into the specific task** that needs them, so implementers don't relearn
 them. (Implementers will also read their own module's INSIGHTS.md on the spot — you handle

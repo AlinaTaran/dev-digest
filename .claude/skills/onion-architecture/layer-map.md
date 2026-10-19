@@ -20,6 +20,18 @@ Reference module to copy from: `modules/reviews/` — `routes.ts` (thin) →
 `service.ts` / `run-executor.ts` (orchestration) → `repository.ts` +
 `repository/*.repo.ts` (the only DB touchpoint for the review domain).
 
+### `mcp-server/` (own onion, npm + zod 4)
+
+Same dependency direction, different paths (enforced by its own depcruise: `cd mcp-server && npm run lint:arch`).
+
+| Ring (outer → inner) | Paths | Rule |
+|---|---|---|
+| Delivery | `src/delivery/mcp/**` | Thin tool handlers; only ring (with `main.ts`) importing `@modelcontextprotocol/*`. |
+| Adapters | `src/adapters/**` | Implement ports (HTTP client, clock, logger, mocks). Imported only by composition. |
+| Composition root | `src/composition/**`, `src/main.ts` | `loadConfig`, `createContainer` — binds ports to adapters. |
+| Ports | `src/domain/ports.ts` | `DevDigestApiPort`, `ClockPort`, `LoggerPort`. |
+| Domain | `src/domain/**` | Pure use cases; no SDK, zod, fetch, `process`, `node:*`. |
+
 ## The rules, with rationale
 
 1. **A module = a self-contained Fastify plugin** (`routes` + `service` +

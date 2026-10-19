@@ -57,6 +57,10 @@ or a trap someone hit — so the next person (or agent) doesn't relearn it.
 
 ## Recurring Errors & Fixes
 
+- **2026-10-19 — Resync "completes" instantly if started before index-state has loaded.** The baseline `updatedAt` is `undefined`, so the first refetch (`old !== undefined`) looks like completion and the stale degraded map is refetched. Gate start on a loaded baseline (`useBlastResync().canStart`; Resync button disabled until then). Test such TanStack polling hooks with `renderHook` + a real `QueryClient`, `vi.mock('../api')`, `vi.useFakeTimers()` and `await act(() => vi.advanceTimersByTimeAsync(ms))`.
+
+- **2026-10-19 — There is no `--text` CSS variable; use `--text-primary` (also `--text-secondary`, `--text-muted`).** An undefined `var(--text)` in an SVG `fill` silently falls back to black, so the BlastGraph node labels were invisible on the dark theme while tests stayed green (jsdom doesn't resolve CSS vars). Before using a token, check it exists in `src/vendor/ui/styles.css` (`--accent-fg` doesn't either — always give it a fallback).
+
 - **A skills mutation that creates a NEW version must invalidate `["skill-versions", id]`, not just `["skills"]` / `["skill", id]`.** `useUpdateSkill` invalidates only the latter two, so after a body change (which bumps the version and snapshots a new `skill_versions` row) the Versions tab's `useSkillVersions` query stays stale until some unrelated refetch. The dedicated `useRestoreSkill` (restore always creates a version) adds the `["skill-versions", data.id]` invalidation — mirror that in any future mutation that can change `body`. Restore itself is now a real server endpoint (`POST /skills/:id/restore`), not the old client-side workaround of re-PUTting the old body via `useUpdateSkill`.
 
 - **`GET/POST /agents/:id/skills` returns bare `AgentSkillLink` rows (`{ agent_id, skill_id, order }`), NOT a joined `{ skill: Skill, order }`.** It's easy to assume otherwise because the server-side `AgentsRepository.linkedSkills()` *does* return a joined `LinkedSkillRow` (`{skill, order}`) — but the route (`agents/routes.ts`) calls `service.skillLinks()`, which maps to the public `AgentSkillLink` DTO (already in `@devdigest/shared`), i.e. ids only. A mocked-fetch hook test using the wrong (joined) shape will pass green while the real endpoint silently returns `undefined` for `.skill.id`/`.skill.enabled` at runtime — caught only by hitting the live API (`curl localhost:3001/agents/:id/skills`), not by typecheck or the component's own RTL test. If you need the full `Skill` for a link row, look it up by `skill_id` against an already-fetched skill list (e.g. `useSkills()`) — see `SkillsTab.tsx`'s `byId` map.
@@ -64,6 +68,14 @@ or a trap someone hit — so the next person (or agent) doesn't relearn it.
 - **`pnpm dev` "starts fine" on :3000 even when another dev server already holds `[::1]:3000` — and `localhost:3000` then serves the OTHER app.** Next binds the wildcard `*:3000`, which does not collide (no `EADDRINUSE`) with a process bound specifically to IPv6 loopback (seen: an Nx dev server from another project). macOS resolves `localhost` to `::1` first, so the browser/`curl localhost:3000` hit the other app (blank `<title>`), while `127.0.0.1:3000` serves DevDigest. Diagnose with `lsof -nP -iTCP:3000 -sTCP:LISTEN` (two listeners = shadowed) and compare `<title>` on `127.0.0.1` vs `localhost`. Fix: stop the other process, or use `http://127.0.0.1:3000`.
 
 ## Session Notes
+
+### 2026-10-19 — Blast Radius panel on PR Overview
+- `@testing-library/user-event` is NOT installed; tests use `fireEvent` (deviates from the RTL skill).
+- New `blast.json` keys must be merged into the existing `view`/`graph` objects; panel, graph and prior-PRs all use only the `blast` namespace.
+- Colocated tests deep under `pulls/[number]/_components/...` need 8-10 `../` to import `messages/en/blast.json`.
+- `MonoLink` renders an `<a>` only when given an `href` -> query by role `link`.
+- Resync completion compares `updatedAt` against a baseline captured at click time (a ref), then invalidates the blast + pr-history queries. The `--accent-fg` CSS var does not exist (a fallback is used); `--accent-bg` does.
+- In jsdom, SVG `<title>` text is found by `getByText`.
 
 ### 2026-06-30 — INSIGHTS log started
 **Decision:** Track per-package learnings here, referenced from `client/CLAUDE.md`.

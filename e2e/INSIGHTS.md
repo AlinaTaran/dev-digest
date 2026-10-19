@@ -26,6 +26,8 @@ or a trap someone hit — so the next person (or agent) doesn't relearn it.
 
 ## Tool & Library Notes
 
+- **2026-10-19 — `agent-browser wait --text` matches the *rendered* text (innerText), so CSS `text-transform` breaks it.** `SectionLabel` uppercases its children (`textTransform: "uppercase"`), so `wait --text "Blast radius"` never matched the on-screen "BLAST RADIUS" and flow 02 failed. Wait on non-transformed text inside the same block instead (e.g. "Prior PRs touching these files"), never on a `SectionLabel` title. Running flows needs `cd e2e && npm ci` plus the global CLI (`npm i -g agent-browser && agent-browser install`); `./scripts/e2e.sh` is the safe way to run them (isolated DB + alt ports).
+
 - **`{BASE}` is substituted by `resolveArgs`** from `E2E_BASE_URL` (default
   `http://localhost:3000`); `AGENT_BROWSER_BIN` and `E2E_STEP_TIMEOUT` (default 60s) are the
   other knobs. `assert.stdoutIncludes` is a substring check on the command's stdout layered

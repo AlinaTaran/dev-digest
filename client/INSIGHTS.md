@@ -61,6 +61,8 @@ or a trap someone hit — so the next person (or agent) doesn't relearn it.
 
 - **`GET/POST /agents/:id/skills` returns bare `AgentSkillLink` rows (`{ agent_id, skill_id, order }`), NOT a joined `{ skill: Skill, order }`.** It's easy to assume otherwise because the server-side `AgentsRepository.linkedSkills()` *does* return a joined `LinkedSkillRow` (`{skill, order}`) — but the route (`agents/routes.ts`) calls `service.skillLinks()`, which maps to the public `AgentSkillLink` DTO (already in `@devdigest/shared`), i.e. ids only. A mocked-fetch hook test using the wrong (joined) shape will pass green while the real endpoint silently returns `undefined` for `.skill.id`/`.skill.enabled` at runtime — caught only by hitting the live API (`curl localhost:3001/agents/:id/skills`), not by typecheck or the component's own RTL test. If you need the full `Skill` for a link row, look it up by `skill_id` against an already-fetched skill list (e.g. `useSkills()`) — see `SkillsTab.tsx`'s `byId` map.
 
+- **`pnpm dev` "starts fine" on :3000 even when another dev server already holds `[::1]:3000` — and `localhost:3000` then serves the OTHER app.** Next binds the wildcard `*:3000`, which does not collide (no `EADDRINUSE`) with a process bound specifically to IPv6 loopback (seen: an Nx dev server from another project). macOS resolves `localhost` to `::1` first, so the browser/`curl localhost:3000` hit the other app (blank `<title>`), while `127.0.0.1:3000` serves DevDigest. Diagnose with `lsof -nP -iTCP:3000 -sTCP:LISTEN` (two listeners = shadowed) and compare `<title>` on `127.0.0.1` vs `localhost`. Fix: stop the other process, or use `http://127.0.0.1:3000`.
+
 ## Session Notes
 
 ### 2026-06-30 — INSIGHTS log started

@@ -28,6 +28,8 @@ or a trap someone hit — so the next person (or agent) doesn't relearn it.
 
 ## Recurring Errors & Fixes
 
+- **2026-10-19 — Running `pnpm install` in `mcp-server/` by habit.** Server/client are pnpm, but this package is **npm** (`package-lock.json`, CI runs `npm ci`). pnpm leaves untracked `pnpm-lock.yaml` + `pnpm-workspace.yaml` and rewrites `node_modules` into the `.pnpm/` layout. Fix: delete both pnpm files, `rm -rf node_modules && npm ci`. Never commit the pnpm files here.
+
 - **2026-10-19 — `Cannot find module '…/mcp-server/mcp-server/bin/devdigest-mcp.mjs'` in MCP Inspector.** The launcher path in root `.mcp.json` is relative and resolves against the cwd the *Inspector* was started from, not the config file's location. Importing `.mcp.json` into Inspector UI v2 ("Import from client config") while Inspector runs from `mcp-server/` doubles the segment. Fix: start Inspector from the repo root, or edit the server's argument to the absolute path of `bin/devdigest-mcp.mjs`.
 
 ## Session Notes

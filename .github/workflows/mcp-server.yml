@@ -1,0 +1,46 @@
+# mcp-server suite — the local stdio MCP server (@devdigest/mcp-server).
+# A thin HTTP client of the DevDigest API exposing review tools to Claude Code.
+# Tests are hermetic units (the API is faked in memory). Uses npm (package-lock.json).
+name: mcp-server
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'mcp-server/**'
+      - '.github/workflows/mcp-server.yml'
+  pull_request:
+    paths:
+      - 'mcp-server/**'
+      - '.github/workflows/mcp-server.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mcp-server-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mcp-server
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mcp-server/package-lock.json
+
+      - run: npm ci
+
+      - run: npm run typecheck
+
+      - run: npm test
+
+      - run: npm run lint:arch

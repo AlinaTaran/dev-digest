@@ -46,6 +46,7 @@ export function usePrDetailPage() {
   const tab = search.get("tab") ?? "overview";
   const traceRunId = search.get("trace");
   const targetFindingId = search.get("finding");
+  const blastView: "tree" | "graph" = search.get("blast") === "graph" ? "graph" : "tree";
   const pushParams = (entries: Record<string, string | null>) => {
     const sp = new URLSearchParams(search.toString());
     for (const [key, val] of Object.entries(entries)) {
@@ -76,6 +77,8 @@ export function usePrDetailPage() {
     refetch,
     tab,
     setTab: (t: string) => setParam("tab", t),
+    blastView,
+    setBlastView: (v: "tree" | "graph") => setParam("blast", v === "tree" ? null : v),
     traceRunId,
     setTrace: (id: string | null) => setParam("trace", id),
     targetFindingId,

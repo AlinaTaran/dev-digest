@@ -42,7 +42,7 @@ skill; e2e rules live in `e2e/CLAUDE.md`.
   **Depends-on**, **Skills**, **relevant insights**, **Test + typecheck** command, and **Acceptance**.
 - Note the **other tasks' Owned paths** so you stay clear of them.
 - `Read <module>/INSIGHTS.md` for the module you're working in (`client/`, `server/`,
-  `reviewer-core/`, or `e2e/`) — focus on *What Doesn't Work*, *Codebase Patterns*,
+  `reviewer-core/`, `e2e/`, or `mcp-server/`) — focus on *What Doesn't Work*, *Codebase Patterns*,
   *Recurring Errors & Fixes* — before touching code.
 
 ## Step 2 — Which injected skills apply (short — do not restate their content)
@@ -88,6 +88,7 @@ style, architecture, security posture, or design of neighboring code — that be
 - **backend** → `cd server && pnpm exec vitest run --exclude '**/*.it.test.ts'` + `pnpm typecheck`
 - **ui** → `cd client && pnpm test` + `pnpm typecheck`
 - **core** → `cd reviewer-core && npm test` + `npm run typecheck`
+- **mcp-server** → `cd mcp-server && npm test` + `npm run typecheck` + `npm run lint:arch`
 
 Write **new** tests only when your task's **Acceptance** explicitly asks for them; otherwise it
 is enough that the existing tests stay green. If a task genuinely needs integration tests

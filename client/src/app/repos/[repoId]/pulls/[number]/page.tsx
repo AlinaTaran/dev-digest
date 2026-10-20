@@ -91,7 +91,17 @@ export default function PRDetailPage() {
       />
 
       <div style={bodyWrap}>
-        {p.tab === "overview" && <OverviewTab prId={p.prId} prBody={pr.body} />}
+        {p.tab === "overview" && (
+          <OverviewTab
+            prId={p.prId}
+            prBody={pr.body}
+            repoId={p.repoId}
+            repoFullName={p.repoFullName}
+            headSha={pr.head_sha}
+            blastView={p.blastView}
+            onBlastViewChange={p.setBlastView}
+          />
+        )}
 
         {p.tab === "findings" && (
           <FindingsTab

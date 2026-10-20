@@ -125,6 +125,8 @@ export interface FullSymbolRow {
 /** A resolved cross-file caller (reference whose decl_file is a changed file). */
 export interface ResolvedCallerRow {
   fromPath: string;
+  /** The file that declares `toSymbol` (the reference's resolved decl_file). */
+  declFile: string;
   toSymbol: string;
   line: number;
   rank: number;
@@ -506,9 +508,10 @@ export class RepoIntelRepository {
     names: string[],
   ): Promise<ResolvedCallerRow[]> {
     if (declFiles.length === 0 || names.length === 0) return [];
-    return this.db
+    const rows = await this.db
       .select({
         fromPath: t.references.fromPath,
+        declFile: t.references.declFile,
         toSymbol: t.references.toSymbol,
         line: t.references.line,
         rank: t.fileRank.rank,
@@ -528,6 +531,9 @@ export class RepoIntelRepository {
           inArray(t.references.toSymbol, names),
         ),
       );
+    // decl_file is nullable in the schema, but the `inArray` filter above
+    // guarantees a resolved (non-null) value on every returned row.
+    return rows.map((r) => ({ ...r, declFile: r.declFile ?? '' }));
   }
 
   /** Per-file facts (endpoints/crons) for the given files. */

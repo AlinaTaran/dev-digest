@@ -10,6 +10,7 @@ end to end — import a PR and run an agent review on it. Later lessons add feat
 | `server/`        | `@devdigest/api`           | Fastify API + Drizzle/Postgres (pgvector)    | 3001 |
 | `client/`        | `@devdigest/web`           | Next.js 15 web app (the studio)              | 3000 |
 | `reviewer-core/` | `@devdigest/reviewer-core` | Pure engine: diff → prompt → LLM → findings  | —    |
+| `mcp-server/`    | `@devdigest/mcp-server`    | Local stdio MCP server (tools for Claude Code) | —  |
 | `e2e/`           | `@devdigest/e2e`           | Deterministic browser e2e (agent-browser)    | —    |
 
 Shared Zod contracts: `server/src/vendor/shared` (`@devdigest/shared`).
@@ -18,7 +19,7 @@ Shared Zod contracts: `server/src/vendor/shared` (`@devdigest/shared`).
 
 ## Stack
 
-Node ≥22 · **pnpm ≥10** (server, client) · **npm** (reviewer-core, e2e) · Docker (Postgres only).
+Node ≥22 · **pnpm ≥10** (server, client) · **npm** (reviewer-core, e2e, mcp-server) · Docker (Postgres only).
 Key versions: Fastify 5 · Drizzle 0.38 · Next 15.1 · React 19 · TanStack Query 5 · Tailwind 4.
 
 ## Commands
@@ -35,7 +36,7 @@ Key versions: Fastify 5 · Drizzle 0.38 · Next 15.1 · React 19 · TanStack Que
   code is shared via tsconfig path aliases, not published modules.
 - **`reviewer-core` is imported as raw TypeScript source** (alias `@devdigest/reviewer-core`),
   not built JS. Its `build` is `tsc --noEmit` (emits nothing).
-- **Package managers differ**: server + client use pnpm; reviewer-core + e2e use npm.
+- **Package managers differ**: server + client use pnpm; reviewer-core + e2e + mcp-server use npm.
 - **Migrations are NOT run on boot** — apply them manually.
 - `server/package.json` is `skip-worktree` (a local variant diverges); CI invokes the
   test split via `pnpm exec vitest run …`, not committed `test:unit`/`test:integration`.

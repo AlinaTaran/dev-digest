@@ -52,3 +52,5 @@ or a trap someone hit — so the next person (or agent) doesn't relearn it.
 **Consequence:** Add an entry whenever a non-obvious decision or gotcha lands.
 
 ## Open Questions
+
+- **Same agent + same PR → materially different verdicts across runs (2026-10-19).** Security Reviewer on `AlinaTaran/dev-digest` PR #3: run 1 → `request_changes`, score 6 (2 CRITICAL: no rate limit on `GET /pulls/:id/intent`, "no auth" on recompute POST + 2 WARNING); run `3ff83d3e…` → `comment`, score 73 (0 CRITICAL; the rate-limit finding downgraded to WARNING, the auth finding gone entirely). Both scores match the deterministic formula (100−2·35−2·12=6; 100−2·12−3=73), so the formula is fine — the swing is in which findings/severities the model emits. A single CRITICAL flips the verdict, so the gate is only as stable as the model's severity call. Open: pin temperature / sample N runs and keep findings that recur / add severity rubric examples to the Security prompt — before using a single run's verdict as a merge blocker.

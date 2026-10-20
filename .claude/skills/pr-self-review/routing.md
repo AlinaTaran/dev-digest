@@ -10,6 +10,7 @@ A bare `.ts` extension is ambiguous; classify by directory, not extension.
 |---|---|---|
 | **UI** | `client/**` | React / Next.js App Router, hooks, styles |
 | **Backend/domain** | `server/**`, `reviewer-core/**` | routes/services/repos/adapters, pure engine |
+| **MCP server** | `mcp-server/**` | local stdio MCP server (npm, zod 4, own onion) |
 | **Shared contracts** | `server/src/vendor/shared/**` | Zod contracts — affect both UI and BE |
 | **e2e** | `e2e/**` | flow specs; not an architecture lens — TS lens only if `.ts` changed |
 | **Non-code** | `*.md`, lockfiles, `.gitignore`, configs | handled by eligibility triage — usually skipped |
@@ -22,6 +23,7 @@ A bare `.ts` extension is ambiguous; classify by directory, not extension.
 |---|---|
 | **UI** (`client/**`) | `frontend-architecture`, `react-best-practices`, `next-best-practices`, `react-testing-library` (esp. `**/*.test.tsx`) |
 | **Backend/domain** (`server/**`, `reviewer-core/**`) | `onion-architecture`, `fastify-best-practices`, `drizzle-orm-patterns` (esp. `db/schema/**`, `**/repository*.ts`, `**/*.repo.ts`), `postgresql-table-design` (esp. `db/schema/**`, `db/migrations/**`) |
+| **MCP server** (`mcp-server/**`) | `onion-architecture`, `zod`, `security` (always) |
 | **Any changed file** (both sides) | `typescript-expert`; `security`; `zod` (where Zod schemas/contracts are present) |
 
 ### Refinements

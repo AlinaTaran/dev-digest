@@ -18,6 +18,8 @@ or a trap someone hit — so the next person (or agent) doesn't relearn it.
 
 ## Codebase Patterns
 
+- **repo-intel indexes only JS/TS (`SUPPORTED_EXT` in `modules/repo-intel/constants.ts`) and caps at `MAX_INDEXED_FILES = 5000`.** So the index file list is NOT "all files in the repo": Markdown/specs/config/other-language files are invisible to it, and "files indexed" undercounts big repos. A feature that grounds arbitrary repo paths (e.g. onboarding first-task paths like `specs/`) needs the tracked-file list at the commit, not the index; any UI count should show the real `files_indexed` (found 2026-10-25, onboarding spec).
+
 ## Tool & Library Notes
 
 - **fflate `unzipSync` — enumerate before you inflate (decompression-bomb defense).** The `filter` callback runs per entry BEFORE decompression and receives `{ name, size, originalSize, compression }`, where `originalSize` is the uncompressed size from the zip header. Returning `false` skips inflating that entry entirely. So the safe pattern for reading one file out of an untrusted `.zip` (see `modules/skills/helpers.ts`) is TWO passes: pass 1 `filter: () => { infos.push(...); return false }` collects names + declared sizes with zero inflation → cap entry-count and the target's `originalSize`; pass 2 `filter: (f) => f.name === target` inflates only the chosen entry. A lying (understated) size header can't slip past — fflate allocates `out` to the declared size and errors mid-inflate when the stream overruns it, so a `try/catch` at the caller still bounds it. Don't call bare `unzipSync(buf)`: it eagerly inflates ALL entries into memory synchronously and blocks the event loop.

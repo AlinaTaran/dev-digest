@@ -47,7 +47,7 @@ Spec ID: SPEC-<YYYY-MM-DD>-<feature-slug>
 Status: draft | approved | implemented
 Supersedes: <link, if this spec replaces an earlier decision>
 
-## Проблема й користувач
+## Problem and user
 ## Goals / Non-goals
 ## User stories
 ## Acceptance criteria (EARS)

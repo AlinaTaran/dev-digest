@@ -238,7 +238,7 @@ Spec ID: SPEC-<YYYY-MM-DD>-<feature-slug>
 Status: draft
 Supersedes: <link, or —>
 
-## Проблема й користувач
+## Problem and user
 ## Goals / Non-goals
 ## User stories
 ## Acceptance criteria (EARS)
@@ -254,7 +254,7 @@ Supersedes: <link, or —>
 
 What each section must contain:
 
-- **Проблема й користувач** — who hits the problem, in what situation, why it matters now.
+- **Problem and user** — who hits the problem, in what situation, why it matters now.
 - **Goals / Non-goals** — measurable goals; explicit non-goals to fence scope.
 - **User stories** — "As a <role>, I want <action>, so that <value>". Numbered `US-1`, …
 - **Acceptance criteria (EARS)** — numbered `AC-1`, …, each traced to a user story

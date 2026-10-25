@@ -253,6 +253,37 @@ export interface CodeIndex {
   references(repo: RepoRef, symbol: string): Promise<CodeReference[]>;
 }
 
+// ---------- Repo docs (Project Context: confined fs access to a clone's Markdown) ----------
+export class RepoDocsError extends Error {
+  constructor(
+    public readonly kind: 'missing' | 'rejected_path' | 'io',
+    message?: string,
+  ) {
+    super(message ?? kind);
+    this.name = 'RepoDocsError';
+  }
+}
+
+export type RepoDocRead =
+  | { kind: 'ok'; bytes: Uint8Array }
+  | { kind: 'missing' }
+  | { kind: 'rejected_path' }
+  | { kind: 'too_large'; sizeBytes: number };
+
+export interface RepoDocsStore {
+  /** Whether the clone root for `repo` exists on disk. */
+  rootStatus(repo: RepoRef): Promise<'ok' | 'missing'>;
+  /** Regular files whose posix relative path passes `match`. Skips symlinks and `excludeDirs`. */
+  list(
+    repo: RepoRef,
+    opts: { match: (rel: string) => boolean; excludeDirs: readonly string[] },
+  ): Promise<{ path: string; sizeBytes: number; mtime: string | null }[]>;
+  /** Read one file, realpath-confined to the clone root; size is checked before reading. */
+  read(repo: RepoRef, path: string, maxBytes: number): Promise<RepoDocRead>;
+  /** Atomically overwrite an EXISTING non-symlink regular file inside the clone root. Throws RepoDocsError. */
+  writeExisting(repo: RepoRef, path: string, bytes: Uint8Array): Promise<void>;
+}
+
 // ---------- WebFetch (SSRF-guarded external plan/spec URL fetch) ----------
 export interface WebFetchResult {
   url: string;

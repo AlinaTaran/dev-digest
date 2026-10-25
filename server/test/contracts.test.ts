@@ -12,6 +12,11 @@ import {
   EvalRun,
   MemoryItem,
   RunTrace,
+  ContextListing,
+  ContextAttachBody,
+  AgentContextResponse,
+  SkillContextResponse,
+  SettingsKnown,
   Settings,
   Repo,
   PrDetail,
@@ -167,6 +172,72 @@ describe('AI contracts parse fixtures', () => {
       log: [{ t: '00.00', kind: 'info', msg: 'started' }],
     });
     expect(trace.tool_calls).toHaveLength(1);
+    // Old traces predate project context: the new fields are absent, not required.
+    expect(trace.specs_missing).toBeUndefined();
+    expect(trace.specs_tokens).toBeUndefined();
+  });
+
+  it('RunTrace accepts specs_missing + specs_tokens', () => {
+    const trace = RunTrace.parse({
+      config: { agent: 'A', model: 'm' },
+      stats: { duration_ms: 1, tokens_in: 1, tokens_out: 1, findings: 0, grounding: '0/0', cost_usd: null },
+      prompt_assembly: { system: 's', user: 'u' },
+      tool_calls: [],
+      raw_output: '{}',
+      memory_pulled: [],
+      specs_read: ['specs/a.md'],
+      specs_missing: ['specs/gone.md'],
+      specs_tokens: [{ path: 'specs/a.md', tokens: 12 }],
+      log: [],
+    });
+    expect(trace.specs_tokens?.[0]?.tokens).toBe(12);
+    expect(trace.specs_missing).toEqual(['specs/gone.md']);
+  });
+});
+
+describe('project context contracts', () => {
+  const uuid = '3f2b8c1e-6a4d-4e0a-9b1c-2d3e4f5a6b7c';
+
+  it('ContextListing + attach body + responses parse fixtures', () => {
+    const listing = ContextListing.parse({
+      repo_id: uuid,
+      globs: ['**/{specs,docs,insights}/**/*.md'],
+      scanned_at: '2026-10-21T10:00:00.000Z',
+      clone_sha: null,
+      degraded: false,
+      reason: null,
+      truncated: false,
+      total_found: 1,
+      docs: [
+        { path: 'specs/a.md', name: 'a.md', dir: 'specs', type: 'specs', size_bytes: 10, tokens: 3, too_large: false, used_by_agents: 2 },
+      ],
+    });
+    expect(listing.docs[0]?.updated_at).toBeUndefined();
+    expect(ContextAttachBody.parse({ repo_id: uuid, paths: ['specs/a.md'] }).paths).toHaveLength(1);
+    expect(() => ContextAttachBody.parse({ repo_id: 'nope', paths: [] })).toThrow();
+
+    const attached = [{ path: 'specs/a.md', position: 0, missing: false, tokens: 3 }];
+    expect(
+      AgentContextResponse.parse({
+        repo_id: uuid,
+        attached,
+        inherited: [{ path: 'docs/b.md', skill_id: uuid, skill_name: 'S', missing: false, tokens: 5, duplicate_of_attached: false }],
+        effective: [
+          { path: 'specs/a.md', source: 'agent', missing: false, tokens: 3 },
+          { path: 'docs/b.md', source: { skill_id: uuid, skill_name: 'S' }, missing: false, tokens: 5 },
+        ],
+        total_tokens: 8,
+      }).effective,
+    ).toHaveLength(2);
+    expect(
+      SkillContextResponse.parse({ repo_id: uuid, attached, total_tokens: 3, serialized: '## Project context\n- specs/a.md' })
+        .serialized,
+    ).toContain('- specs/a.md');
+  });
+
+  it('SettingsKnown.project_context_globs is optional', () => {
+    expect(SettingsKnown.parse({}).project_context_globs).toBeUndefined();
+    expect(SettingsKnown.parse({ project_context_globs: ['docs/**/*.md'] }).project_context_globs).toEqual(['docs/**/*.md']);
   });
 });
 

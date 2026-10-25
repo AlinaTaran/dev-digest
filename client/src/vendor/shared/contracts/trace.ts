@@ -86,6 +86,10 @@ export const RunTrace = z.object({
   memory_pulled: z.array(MemoryPulled),
   specs_read: z.array(z.string()),
   log: z.array(RunLogLine),
+  /** Attached project-context docs that could not be injected (absent on old traces). */
+  specs_missing: z.array(z.string()).nullish(),
+  /** Per-doc estimated tokens for the injected project-context docs (absent on old traces). */
+  specs_tokens: z.array(z.object({ path: z.string(), tokens: z.number().int() })).nullish(),
 });
 export type RunTrace = z.infer<typeof RunTrace>;
 

@@ -61,7 +61,8 @@
       "preview": "Preview",
       "versions": "Versions",
       "stats": "Stats",
-      "evals": "Evals"
+      "evals": "Evals",
+      "context": "Context"
     }
   },
   "config": {
@@ -191,5 +192,10 @@
   "evals": {
     "comingSoonTitle": "Evals coming soon",
     "comingSoonBody": "Recall/precision/citation-accuracy trace runs for this skill land in a later lesson."
+  },
+  "context": {
+    "title": "Project context to use",
+    "hint": "Any agent using this skill inherits these documents.",
+    "serializesAs": "Serializes as"
   }
 }

@@ -13,6 +13,7 @@ import { PreviewTab } from "./_components/PreviewTab/PreviewTab";
 import { VersionsTab } from "./_components/VersionsTab/VersionsTab";
 import { StatsTab } from "./_components/StatsTab/StatsTab";
 import { EvalsTab } from "./_components/EvalsTab/EvalsTab";
+import { ContextTab } from "./_components/ContextTab/ContextTab";
 import { TABS } from "./constants";
 import { s } from "./styles";
 
@@ -32,6 +33,9 @@ export function SkillEditor({ skill, tab, onTab }: { skill: Skill; tab: string; 
       break;
     case "stats":
       content = <StatsTab key={skill.id} skill={skill} />;
+      break;
+    case "context":
+      content = <ContextTab key={skill.id} skill={skill} />;
       break;
     case "evals":
       content = <EvalsTab />;

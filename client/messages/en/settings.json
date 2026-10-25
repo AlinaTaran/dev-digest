@@ -28,6 +28,19 @@
     "liveNote": "Prices are pulled live from OpenRouter — USD per 1M input/output tokens.",
     "noKeyNote": "Add an OpenRouter API key under API Keys to load the model list and prices."
   },
+  "projectContext": {
+    "title": "Project Context",
+    "body": "Glob patterns that decide which Markdown files in a repository appear on the Project Context page. Patterns are relative to the repository root.",
+    "globLabel": "Search globs",
+    "globPlaceholder": "e.g. **/docs/**/*.md",
+    "globInput": "Glob pattern {n}",
+    "add": "Add glob",
+    "remove": "Remove glob {glob}",
+    "save": "Save globs",
+    "saving": "Saving…",
+    "saved": "Saved",
+    "error": "Couldn’t save: {message}"
+  },
   "workspace": {
     "title": "Workspace",
     "body": "Appearance and sync preferences for this workspace.",

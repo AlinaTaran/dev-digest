@@ -11,12 +11,15 @@ export function CodeTextarea({
   placeholder,
   rows = 16,
   mono = true,
+  ariaLabel,
 }: {
   value: string;
   onChange?: (v: string) => void;
   placeholder?: string;
   rows?: number;
   mono?: boolean;
+  /** Accessible name for the textarea (the gutter is aria-hidden). */
+  ariaLabel?: string;
 }) {
   const taRef = React.useRef<HTMLTextAreaElement>(null);
   const gutterRef = React.useRef<HTMLDivElement>(null);
@@ -65,6 +68,7 @@ export function CodeTextarea({
         ref={taRef}
         className={mono ? "mono" : undefined}
         value={value}
+        aria-label={ariaLabel}
         rows={rows}
         placeholder={placeholder}
         wrap="off"

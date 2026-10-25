@@ -33,7 +33,10 @@ import type {
   SecretKey,
   WebFetchClient,
   WebFetchResult,
+  RepoDocsStore,
+  RepoDocRead,
 } from '@devdigest/shared';
+import { RepoDocsError } from '@devdigest/shared';
 import { parseUnifiedDiff } from './git/diff-parser.js';
 
 /**
@@ -357,5 +360,75 @@ export class FakeWebFetchClient implements WebFetchClient {
       text: fixture.text ?? '',
       truncated: fixture.truncated ?? false,
     };
+  }
+}
+
+// ---------- Mock RepoDocsStore ----------
+export interface MockRepoDoc {
+  content: string | Uint8Array;
+  /** Simulate a committed symlink: read/write report `rejected_path`. */
+  symlink?: boolean;
+  /** Override the reported size (simulate a huge file without allocating it). */
+  sizeBytes?: number;
+}
+
+/**
+ * In-memory RepoDocsStore. Keyed by posix path (shared across repos unless the
+ * test builds one store per repo). `cloned=false` simulates a missing clone.
+ */
+export class MockRepoDocsStore implements RepoDocsStore {
+  public writes: { path: string; bytes: Uint8Array }[] = [];
+
+  constructor(
+    public files: Record<string, MockRepoDoc | string | Uint8Array> = {},
+    private opts: { cloned?: boolean; failWrites?: boolean } = {},
+  ) {}
+
+  private entry(path: string): MockRepoDoc | undefined {
+    const e = this.files[path];
+    if (e === undefined) return undefined;
+    return typeof e === 'string' || e instanceof Uint8Array ? { content: e } : e;
+  }
+
+  private bytesOf(e: MockRepoDoc): Uint8Array {
+    return typeof e.content === 'string' ? new TextEncoder().encode(e.content) : e.content;
+  }
+
+  async rootStatus(_repo: RepoRef): Promise<'ok' | 'missing'> {
+    return this.opts.cloned === false ? 'missing' : 'ok';
+  }
+
+  async list(
+    _repo: RepoRef,
+    opts: { match: (rel: string) => boolean; excludeDirs: readonly string[] },
+  ): Promise<{ path: string; sizeBytes: number; mtime: string | null }[]> {
+    const out: { path: string; sizeBytes: number; mtime: string | null }[] = [];
+    for (const path of Object.keys(this.files)) {
+      const e = this.entry(path)!;
+      if (e.symlink) continue;
+      if (path.split('/').slice(0, -1).some((seg) => opts.excludeDirs.includes(seg))) continue;
+      if (!opts.match(path)) continue;
+      out.push({ path, sizeBytes: e.sizeBytes ?? this.bytesOf(e).byteLength, mtime: null });
+    }
+    return out;
+  }
+
+  async read(_repo: RepoRef, path: string, maxBytes: number): Promise<RepoDocRead> {
+    const e = this.entry(path);
+    if (!e) return { kind: 'missing' };
+    if (e.symlink) return { kind: 'rejected_path' };
+    const bytes = this.bytesOf(e);
+    const size = e.sizeBytes ?? bytes.byteLength;
+    if (size > maxBytes) return { kind: 'too_large', sizeBytes: size };
+    return { kind: 'ok', bytes };
+  }
+
+  async writeExisting(_repo: RepoRef, path: string, bytes: Uint8Array): Promise<void> {
+    const e = this.entry(path);
+    if (!e) throw new RepoDocsError('missing');
+    if (e.symlink) throw new RepoDocsError('rejected_path');
+    if (this.opts.failWrites) throw new RepoDocsError('io', 'write failed');
+    this.files[path] = { ...e, content: bytes };
+    this.writes.push({ path, bytes });
   }
 }

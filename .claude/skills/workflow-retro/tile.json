@@ -1,0 +1,11 @@
+{
+  "name": "devdigest/workflow-retro",
+  "version": "0.1.0",
+  "private": true,
+  "summary": "Retrospective of a multi-agent run: measured tokens/agents/launch order/duplication/hook overhead (collect.py), evidence-backed per-agent insights, and proposed changes to agent/skill definitions; appends a trend row to docs/retros/ledger.md. Manual invocation only: /workflow-retro [deep] [since:<ISO>] [until:<ISO>] [label:<name>].",
+  "skills": {
+    "workflow-retro": {
+      "path": "SKILL.md"
+    }
+  }
+}

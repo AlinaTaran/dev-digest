@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { createDb, type Db } from './client.js';
 import * as t from './schema.js';
 import { eq, and } from 'drizzle-orm';
+import { SEED_ONBOARDING_TOUR } from './seed-onboarding.js';
 import {
   GENERAL_REVIEWER_PROMPT,
   SECURITY_REVIEWER_PROMPT,
@@ -98,6 +99,16 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
       .returning();
   }
   const repoId = repo!.id;
+
+  // ---- Onboarding Tour (fixed fixture; the demo repo has no clone) ----
+  await db
+    .insert(t.onboarding)
+    .values({
+      repoId,
+      json: SEED_ONBOARDING_TOUR,
+      generatedAt: new Date(SEED_ONBOARDING_TOUR.generated_at),
+    })
+    .onConflictDoNothing({ target: t.onboarding.repoId });
 
   // ---- PR #482 (rate limiting) ----
   let [pr] = await db

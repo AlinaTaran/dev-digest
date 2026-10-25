@@ -39,6 +39,8 @@ or a trap someone hit — so the next person (or agent) doesn't relearn it.
 - **2026-10-25 — cheaper recovery than restarting `pnpm dev`:** `touch client/src/lib/api.ts` (where `NEXT_PUBLIC_API_BASE` is read) makes the :3000 dev server recompile its chunks with its own env, so it talks to :3001 again. Also open the app on `localhost:3000`, not `127.0.0.1` (API CORS allows only `localhost`).
 - **2026-10-25 — an ad-hoc agent-browser session can wedge after many reloads while the dev server hot-recompiles:** every page then stays on skeletons ("No repo selected") and `snapshot` shows only `button "Open Next.js Dev Tools"` + an empty alert, with no new network requests — looks like an app regression but isn't. `agent-browser close` (same `--session`) and reopen; pages then load instantly. Also: right after editing client files the first load can take 10–20 s (on-demand compile) — wait before judging.
 
+- **2026-10-25 — `find role link click --name "<text>"` fails when the name is a substring shared by several elements (flow 09 TOC).** The Onboarding TOC entry "Critical paths" also matches other nodes, so the command exits non-zero. Click by a scoped CSS locator instead: `find first 'nav a[href="#critical-paths"]' click`. (BSD `sed -i` needs a backup-suffix arg on macOS; use the Edit tool for flow JSON changes.)
+
 ## Recurring Errors & Fixes
 
 - **Flow fails on a `wait --text` for seeded content** → the DB wasn't freshly seeded.

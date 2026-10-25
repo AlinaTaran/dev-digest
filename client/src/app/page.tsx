@@ -33,7 +33,7 @@ export default function HomePage() {
             title="No repositories yet"
             body="Add a repository to start reviewing pull requests. Set your API keys once in Settings → API Keys."
             cta="Add repository"
-            onCta={() => router.push("/onboarding")}
+            onCta={() => router.push("/repos/new")}
           />
         ) : (
           <div>

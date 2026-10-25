@@ -181,6 +181,11 @@ export interface GitClient {
   blame(repo: RepoRef, path: string): Promise<BlameLine[]>;
   log(repo: RepoRef, path?: string): Promise<GitCommit[]>;
   readFile(repo: RepoRef, path: string): Promise<string>;
+  /**
+   * Repo-relative posix paths of every tracked file (files only) at `sha`
+   * (`git ls-tree -r`). Throws when `sha` is not present in the clone.
+   */
+  listTrackedFiles(repo: RepoRef, sha: string): Promise<string[]>;
   clonePathFor(repo: RepoRef): string;
 }
 

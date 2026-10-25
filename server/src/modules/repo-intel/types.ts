@@ -183,4 +183,14 @@ export interface RepoIntel {
     opts?: { exclude?: string[] },
   ): Promise<string[]>;
   getCriticalPaths(repoId: string): Promise<string[][]>;
+
+  // --- Onboarding Tour reads. All return an empty result when repo-intel is
+  // disabled or on error. NOT workspace-scoped: callers must resolve the repo
+  // within the workspace first. -------------------------------------------
+  /** Index file list: `file_rank` paths, else distinct `symbols.path` (partial index). */
+  getIndexedFiles(repoId: string): Promise<string[]>;
+  /** Importer count per path (`file_edges` grouped by `to_file`); 0-importer files absent. */
+  getFanIn(repoId: string, paths: string[]): Promise<Map<string, number>>;
+  /** Files declaring HTTP endpoints ("METHOD /path"), capped at `limit`. */
+  getEndpointFacts(repoId: string, limit: number): Promise<{ path: string; endpoints: string[] }[]>;
 }

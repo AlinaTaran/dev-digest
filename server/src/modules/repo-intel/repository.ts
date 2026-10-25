@@ -447,6 +447,62 @@ export class RepoIntelRepository {
       .where(and(eq(t.fileRank.repoId, repoId), inArray(t.fileRank.filePath, paths)));
   }
 
+  /** Every ranked file path for a repo (order unspecified; caller sorts). */
+  async getRankedFilePaths(repoId: string): Promise<string[]> {
+    const rows = await this.db
+      .select({ path: t.fileRank.filePath })
+      .from(t.fileRank)
+      .where(eq(t.fileRank.repoId, repoId));
+    return rows.map((r) => r.path);
+  }
+
+  /** Distinct indexed symbol paths — fallback file list when `file_rank` is empty. */
+  async getDistinctSymbolPaths(repoId: string): Promise<string[]> {
+    const rows = await this.db
+      .selectDistinct({ path: t.symbols.path })
+      .from(t.symbols)
+      .where(eq(t.symbols.repoId, repoId));
+    return rows.map((r) => r.path);
+  }
+
+  /** Importer counts per `to_file` for the given paths; zero-importer files are absent. */
+  async getFanInCounts(
+    repoId: string,
+    paths: string[],
+  ): Promise<Array<{ path: string; count: number }>> {
+    if (paths.length === 0) return [];
+    const rows = await this.db
+      .select({ path: t.fileEdges.toFile, count: sql<number>`count(*)::int` })
+      .from(t.fileEdges)
+      .where(and(eq(t.fileEdges.repoId, repoId), inArray(t.fileEdges.toFile, paths)))
+      .groupBy(t.fileEdges.toFile);
+    return rows;
+  }
+
+  /** Files that declare at least one HTTP endpoint, path-ordered, capped at `limit`. */
+  async getFileFactsWithEndpoints(
+    repoId: string,
+    limit: number,
+  ): Promise<Array<{ path: string; endpoints: string[] }>> {
+    const rows = await this.db
+      .select({ path: t.fileFacts.filePath, endpoints: t.fileFacts.endpoints })
+      .from(t.fileFacts)
+      .where(
+        and(
+          eq(t.fileFacts.repoId, repoId),
+          sql`jsonb_array_length(${t.fileFacts.endpoints}) > 0`,
+        ),
+      )
+      .orderBy(asc(t.fileFacts.filePath))
+      .limit(limit);
+    return rows.map((r) => ({
+      path: r.path,
+      endpoints: Array.isArray(r.endpoints)
+        ? r.endpoints.filter((e): e is string => typeof e === 'string')
+        : [],
+    }));
+  }
+
   /** Top `limit` paths by rank DESC (caller filters tests/configs in JS). */
   async getRankedPaths(
     repoId: string,

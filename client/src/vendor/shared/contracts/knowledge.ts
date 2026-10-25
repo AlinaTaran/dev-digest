@@ -26,25 +26,206 @@ export const Conformance = z.object({
 export type Conformance = z.infer<typeof Conformance>;
 
 // ---- Onboarding ----
-export const OnboardingLink = z.object({
-  label: z.string(),
-  path: z.string(),
-});
-export type OnboardingLink = z.infer<typeof OnboardingLink>;
+export const ONBOARDING_SECTION_KINDS = [
+  'architecture',
+  'critical_paths',
+  'run_locally',
+  'reading_path',
+  'first_tasks',
+] as const;
 
-export const OnboardingSection = z.object({
-  kind: z.string(),
-  title: z.string(),
-  body: z.string(), // markdown
-  diagram: z.string().nullish(), // mermaid
-  links: z.array(OnboardingLink),
+/** Caps applied in code after grounding; the LLM draft schema carries none of them. */
+export const ONBOARDING_LIMITS = {
+  summaryChars: 1200,
+  nodesMax: 12,
+  nodesMin: 2,
+  edgesMax: 20,
+  nodeLabel: 40,
+  edgeLabel: 30,
+  criticalMax: 8,
+  whyChars: 120,
+  stepsMax: 10,
+  commandChars: 300,
+  noteChars: 120,
+  readingMax: 10,
+  tasksMax: 3,
+  taskTitle: 80,
+  pathChars: 512,
+} as const;
+
+export const OnboardingSectionEmptyReason = z.enum(['all_dropped', 'needs_llm', 'no_data']);
+export type OnboardingSectionEmptyReason = z.infer<typeof OnboardingSectionEmptyReason>;
+
+export const OnboardingNodeKind = z.enum([
+  'client',
+  'entrypoint',
+  'module',
+  'middleware',
+  'datastore',
+  'external',
+]);
+export type OnboardingNodeKind = z.infer<typeof OnboardingNodeKind>;
+
+export const OnboardingDegradedReason = z.enum([
+  'index_partial',
+  'no_import_graph',
+  'llm_unavailable',
+  'llm_failed',
+]);
+export type OnboardingDegradedReason = z.infer<typeof OnboardingDegradedReason>;
+
+export const OnboardingErrorReason = z.enum([
+  'timeout',
+  'interrupted',
+  'llm_failed',
+  'llm_unavailable',
+  'internal',
+]);
+export type OnboardingErrorReason = z.infer<typeof OnboardingErrorReason>;
+
+export const OnboardingDiagramNode = z.object({
+  id: z.string(),
+  label: z.string().max(ONBOARDING_LIMITS.nodeLabel),
+  kind: OnboardingNodeKind,
+  path: z.string().nullable(),
 });
+export type OnboardingDiagramNode = z.infer<typeof OnboardingDiagramNode>;
+
+export const OnboardingDiagramEdge = z.object({
+  from: z.string(),
+  to: z.string(),
+  label: z.string().max(ONBOARDING_LIMITS.edgeLabel).nullable(),
+});
+export type OnboardingDiagramEdge = z.infer<typeof OnboardingDiagramEdge>;
+
+export const OnboardingArchitectureSection = z.object({
+  kind: z.literal('architecture'),
+  empty_reason: OnboardingSectionEmptyReason.nullable(),
+  summary_md: z.string().max(ONBOARDING_LIMITS.summaryChars).nullable(),
+  top_dirs: z.array(z.object({ path: z.string(), files: z.number().int() })),
+  diagram: z
+    .object({
+      nodes: z
+        .array(OnboardingDiagramNode)
+        .min(ONBOARDING_LIMITS.nodesMin)
+        .max(ONBOARDING_LIMITS.nodesMax),
+      edges: z.array(OnboardingDiagramEdge).max(ONBOARDING_LIMITS.edgesMax),
+    })
+    .nullable(),
+});
+export type OnboardingArchitectureSection = z.infer<typeof OnboardingArchitectureSection>;
+
+export const OnboardingCriticalPathsSection = z.object({
+  kind: z.literal('critical_paths'),
+  empty_reason: OnboardingSectionEmptyReason.nullable(),
+  items: z
+    .array(
+      z.object({
+        path: z.string(),
+        why: z.string().max(ONBOARDING_LIMITS.whyChars).nullable(),
+        fan_in: z.number().int().min(0),
+      }),
+    )
+    .max(ONBOARDING_LIMITS.criticalMax),
+});
+export type OnboardingCriticalPathsSection = z.infer<typeof OnboardingCriticalPathsSection>;
+
+export const OnboardingRunLocallySection = z.object({
+  kind: z.literal('run_locally'),
+  empty_reason: OnboardingSectionEmptyReason.nullable(),
+  steps: z
+    .array(
+      z.object({
+        command: z.string().max(ONBOARDING_LIMITS.commandChars),
+        source_path: z.string(),
+        note: z.string().max(ONBOARDING_LIMITS.noteChars).nullable(),
+      }),
+    )
+    .max(ONBOARDING_LIMITS.stepsMax),
+});
+export type OnboardingRunLocallySection = z.infer<typeof OnboardingRunLocallySection>;
+
+export const OnboardingReadingPathSection = z.object({
+  kind: z.literal('reading_path'),
+  empty_reason: OnboardingSectionEmptyReason.nullable(),
+  steps: z
+    .array(z.object({ path: z.string(), why: z.string().max(ONBOARDING_LIMITS.whyChars) }))
+    .max(ONBOARDING_LIMITS.readingMax),
+});
+export type OnboardingReadingPathSection = z.infer<typeof OnboardingReadingPathSection>;
+
+export const OnboardingFirstTasksSection = z.object({
+  kind: z.literal('first_tasks'),
+  empty_reason: OnboardingSectionEmptyReason.nullable(),
+  tasks: z
+    .array(
+      z.object({
+        title: z.string().max(ONBOARDING_LIMITS.taskTitle),
+        path: z.string().max(ONBOARDING_LIMITS.pathChars),
+        path_kind: z.enum(['file', 'dir', 'new_file']),
+        complexity: z.enum(['low', 'medium']),
+      }),
+    )
+    .max(ONBOARDING_LIMITS.tasksMax),
+});
+export type OnboardingFirstTasksSection = z.infer<typeof OnboardingFirstTasksSection>;
+
+export const OnboardingSection = z.discriminatedUnion('kind', [
+  OnboardingArchitectureSection,
+  OnboardingCriticalPathsSection,
+  OnboardingRunLocallySection,
+  OnboardingReadingPathSection,
+  OnboardingFirstTasksSection,
+]);
 export type OnboardingSection = z.infer<typeof OnboardingSection>;
 
 export const Onboarding = z.object({
-  sections: z.array(OnboardingSection),
+  generated_at: z.string(), // ISO
+  source_sha: z.string(),
+  files_indexed: z.number().int(),
+  index_status: z.enum(['full', 'partial']),
+  degraded: z.boolean(),
+  reasons: z.array(OnboardingDegradedReason),
+  model: z.object({ provider: z.string(), model: z.string() }).nullable(),
+  dropped_refs: z.number().int().min(0),
+  // Exactly five sections, in page order.
+  sections: z.tuple([
+    OnboardingArchitectureSection,
+    OnboardingCriticalPathsSection,
+    OnboardingRunLocallySection,
+    OnboardingReadingPathSection,
+    OnboardingFirstTasksSection,
+  ]),
 });
 export type Onboarding = z.infer<typeof Onboarding>;
+
+export const OnboardingGeneration = z.object({
+  id: z.string(),
+  status: z.enum(['generating', 'done', 'failed']),
+  started_at: z.string(),
+  finished_at: z.string().nullable(),
+  error_reason: OnboardingErrorReason.nullable(),
+});
+export type OnboardingGeneration = z.infer<typeof OnboardingGeneration>;
+
+export const OnboardingAvailability = z.object({
+  can_generate: z.boolean(),
+  reason: z.enum(['not_cloned', 'no_index']).nullable(),
+});
+export type OnboardingAvailability = z.infer<typeof OnboardingAvailability>;
+
+export const OnboardingTourResponse = z.object({
+  repo_id: z.string(),
+  tour: Onboarding.nullable(),
+  generation: OnboardingGeneration.nullable(),
+  availability: OnboardingAvailability,
+  stale: z.boolean(),
+  current_index_sha: z.string().nullable(),
+});
+export type OnboardingTourResponse = z.infer<typeof OnboardingTourResponse>;
+
+export const OnboardingGenerateResponse = z.object({ generation: OnboardingGeneration });
+export type OnboardingGenerateResponse = z.infer<typeof OnboardingGenerateResponse>;
 
 // ---- Eval ----
 export const EvalPerTrace = z.object({

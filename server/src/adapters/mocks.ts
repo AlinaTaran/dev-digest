@@ -254,6 +254,8 @@ export interface MockGitOptions {
   head?: string;
   /** Head `currentHead()` returns AFTER `sync()` runs — simulates fetch+reset advancing HEAD. */
   syncedHead?: string;
+  /** `listTrackedFiles()` result; defaults to the keys of `files`. */
+  trackedFiles?: string[];
 }
 
 export class MockGitClient implements GitClient {
@@ -297,6 +299,9 @@ export class MockGitClient implements GitClient {
   }
   async readFile(_repo: RepoRef, path: string): Promise<string> {
     return this.opts.files?.[path] ?? '';
+  }
+  async listTrackedFiles(): Promise<string[]> {
+    return this.opts.trackedFiles ?? Object.keys(this.opts.files ?? {});
   }
 }
 

@@ -9,6 +9,8 @@ import {
   SmartDiff,
   Conformance,
   Onboarding,
+  OnboardingGenerateResponse,
+  OnboardingTourResponse,
   EvalRun,
   MemoryItem,
   RunTrace,
@@ -130,11 +132,6 @@ describe('AI contracts parse fixtures', () => {
         spec_title: 'Spec',
         items: [{ requirement: 'r', status: 'implemented' }],
         completeness_pct: 80,
-      }),
-    ).not.toThrow();
-    expect(() =>
-      Onboarding.parse({
-        sections: [{ kind: 'architecture', title: 'T', body: 'b', links: [] }],
       }),
     ).not.toThrow();
     expect(() =>
@@ -310,5 +307,112 @@ describe('platform DTOs', () => {
       ],
     });
     expect(pr.latest_findings).toHaveLength(1);
+  });
+});
+
+describe('Onboarding contract', () => {
+  const node = (i: number) => ({ id: `n${i}`, label: `Node ${i}`, kind: 'module', path: null });
+  const tour = () => ({
+    generated_at: '2026-10-25T10:00:00.000Z',
+    source_sha: 'abc1234',
+    files_indexed: 42,
+    index_status: 'full',
+    degraded: false,
+    reasons: [],
+    model: { provider: 'openai', model: 'gpt-x' },
+    dropped_refs: 0,
+    sections: [
+      {
+        kind: 'architecture',
+        empty_reason: null,
+        summary_md: 'Layered API.',
+        top_dirs: [{ path: 'src', files: 40 }],
+        diagram: { nodes: [node(1), node(2)], edges: [{ from: 'n1', to: 'n2', label: null }] },
+      },
+      {
+        kind: 'critical_paths',
+        empty_reason: null,
+        items: [{ path: 'src/a.ts', why: null, fan_in: 3 }],
+      },
+      {
+        kind: 'run_locally',
+        empty_reason: null,
+        steps: [{ command: 'pnpm install', source_path: 'package.json', note: null }],
+      },
+      { kind: 'reading_path', empty_reason: null, steps: [{ path: 'src/a.ts', why: 'entry' }] },
+      {
+        kind: 'first_tasks',
+        empty_reason: null,
+        tasks: [{ title: 'Add test', path: 'src/a.ts', path_kind: 'file', complexity: 'low' }],
+      },
+    ],
+  });
+  type Tour = ReturnType<typeof tour>;
+  const mutate = (fn: (t: Tour) => void) => {
+    const t = tour();
+    fn(t);
+    return t;
+  };
+  // Sections are a heterogeneous tuple; tests poke at fields loosely.
+  const sec = (t: Tour, i: number) => t.sections[i] as Record<string, any>;
+
+  it('accepts a valid five-section tour and the API envelopes', () => {
+    expect(() => Onboarding.parse(tour())).not.toThrow();
+    const generation = {
+      id: 'g1',
+      status: 'generating',
+      started_at: '2026-10-25T10:00:00.000Z',
+      finished_at: null,
+      error_reason: null,
+    };
+    expect(() => OnboardingGenerateResponse.parse({ generation })).not.toThrow();
+    expect(() =>
+      OnboardingTourResponse.parse({
+        repo_id: 'r1',
+        tour: null,
+        generation,
+        availability: { can_generate: false, reason: 'not_cloned' },
+        stale: false,
+        current_index_sha: null,
+      }),
+    ).not.toThrow();
+  });
+
+  it('rejects wrong section count, order, and the legacy shape', () => {
+    expect(Onboarding.safeParse(mutate((t) => t.sections.pop())).success).toBe(false);
+    expect(
+      Onboarding.safeParse(
+        mutate((t) => {
+          [t.sections[0], t.sections[1]] = [t.sections[1]!, t.sections[0]!];
+        }),
+      ).success,
+    ).toBe(false);
+    expect(
+      Onboarding.safeParse({
+        sections: [{ kind: 'architecture', title: 'T', body: 'b', links: [] }],
+      }).success,
+    ).toBe(false);
+  });
+
+  it('enforces caps at the contract level', () => {
+    expect(
+      Onboarding.safeParse(mutate((t) => (sec(t, 0).summary_md = 'x'.repeat(1201)))).success,
+    ).toBe(false);
+    expect(
+      Onboarding.safeParse(
+        mutate((t) => {
+          sec(t, 0).diagram.nodes = Array.from({ length: 13 }, (_, i) => node(i));
+        }),
+      ).success,
+    ).toBe(false);
+    expect(
+      Onboarding.safeParse(mutate((t) => (sec(t, 4).tasks[0].complexity = 'high'))).success,
+    ).toBe(false);
+    expect(
+      Onboarding.safeParse(mutate((t) => (sec(t, 2).steps[0].command = 'x'.repeat(301)))).success,
+    ).toBe(false);
+    expect(
+      Onboarding.safeParse(mutate((t) => (sec(t, 3).steps[0].why = 'x'.repeat(121)))).success,
+    ).toBe(false);
   });
 });

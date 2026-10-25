@@ -1,9 +1,6 @@
-/* Add-repository route — /onboarding. Thin wrapper; the screen lives in
-   _components/AddRepoView. */
-"use client";
+/* Legacy /onboarding route — the Add-repository screen moved to /repos/new. */
+import { redirect, RedirectType } from "next/navigation";
 
-import { AddRepoView } from "./_components/AddRepoView/AddRepoView";
-
-export default function AddRepoPage() {
-  return <AddRepoView />;
+export default function OnboardingRedirect() {
+  redirect("/repos/new", RedirectType.replace);
 }

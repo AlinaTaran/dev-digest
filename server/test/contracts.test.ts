@@ -23,6 +23,12 @@ import {
   Repo,
   PrDetail,
   PrMeta,
+  PrBrief,
+  PrBriefResponse,
+  BriefModelOutput,
+  BriefModelOutputCountsOnly,
+  BriefBlastReason,
+  BlastDegradedReason,
 } from '@devdigest/shared';
 
 /**
@@ -414,5 +420,103 @@ describe('Onboarding contract', () => {
     expect(
       Onboarding.safeParse(mutate((t) => (sec(t, 3).steps[0].why = 'x'.repeat(121)))).success,
     ).toBe(false);
+  });
+});
+
+describe('PrBrief contract', () => {
+  const risk = (refs: string[] = ['a.ts']) => ({
+    kind: 'security',
+    title: 'Title',
+    explanation: 'Because.',
+    severity: 'high' as const,
+    file_refs: refs,
+  });
+  const validBrief = () => ({
+    summary: 'Adds a thing.',
+    risks: { risks: [risk()] },
+    review_focus: [{ file: 'a.ts', line: 3, reason: 'Check this', line_adjusted: false }],
+    intent: { intent: 'x', in_scope: [], out_of_scope: [] },
+    blast: { changed_symbols: [], downstream: [], summary: '' },
+    history: { history: [] },
+    meta: {
+      head_sha: 'abc',
+      generated_at: '2026-10-25T00:00:00Z',
+      model: { provider: 'openrouter', model: 'm' },
+      missing_inputs: [],
+      blast_reason: null,
+      input_truncated: [],
+      input_tokens_est: 10,
+      specs_used: [],
+      specs_skipped: [],
+      tokens_in: 1,
+      tokens_out: 1,
+      cost_usd: null,
+      dropped_refs: 0,
+      adjusted_lines: 0,
+    },
+  });
+  const mutate = (fn: (b: ReturnType<typeof validBrief>) => void) => {
+    const b = validBrief();
+    fn(b);
+    return PrBrief.safeParse(b).success;
+  };
+
+  it('parses valid, null-block and rejects legacy shapes', () => {
+    expect(PrBrief.safeParse(validBrief()).success).toBe(true);
+    expect(
+      mutate((b) => {
+        (b as any).intent = null;
+        (b as any).blast = null;
+        (b as any).history = null;
+      }),
+    ).toBe(true);
+    expect(PrBrief.safeParse({ risks: [] }).success).toBe(false);
+  });
+
+  it('enforces caps', () => {
+    expect(mutate((b) => (b.summary = 'x'.repeat(601)))).toBe(false);
+    expect(mutate((b) => (b.risks.risks = Array.from({ length: 7 }, () => risk())))).toBe(false);
+    expect(
+      mutate((b) => (b.review_focus = Array.from({ length: 9 }, () => ({ ...b.review_focus[0]! })))),
+    ).toBe(false);
+    expect(mutate((b) => (b.review_focus[0]!.line = 0))).toBe(false);
+    expect(mutate((b) => (b.risks.risks = [risk([])]))).toBe(false);
+    expect(mutate((b) => (b.risks.risks = [risk(['a', 'b', 'c', 'd'])]))).toBe(false);
+    expect(mutate((b) => (b.review_focus[0]!.reason = 'x'.repeat(161)))).toBe(false);
+  });
+
+  it('model output schemas', () => {
+    const focus = { file: 'a.ts', line: 1, reason: 'r' };
+    const base = { summary: 's', risks: [risk()], review_focus: [focus] };
+    expect(BriefModelOutput.safeParse(base).success).toBe(true);
+    expect(BriefModelOutput.safeParse({ ...base, summary: 'x'.repeat(601) }).success).toBe(false);
+    expect(
+      BriefModelOutput.safeParse({ ...base, review_focus: Array.from({ length: 13 }, () => focus) }).success,
+    ).toBe(false);
+    expect(
+      BriefModelOutput.safeParse({ ...base, risks: Array.from({ length: 11 }, () => risk()) }).success,
+    ).toBe(false);
+    expect(
+      BriefModelOutput.safeParse({ ...base, risks: [risk(['1', '2', '3', '4', '5'])] }).success,
+    ).toBe(true);
+
+    expect(BriefModelOutputCountsOnly.safeParse({ ...base, summary: 'x'.repeat(601) }).success).toBe(true);
+    expect(
+      BriefModelOutputCountsOnly.safeParse({ ...base, review_focus: Array.from({ length: 13 }, () => focus) })
+        .success,
+    ).toBe(false);
+    expect(BriefModelOutputCountsOnly.safeParse({ ...base, risks: [risk([])] }).success).toBe(false);
+  });
+
+  it('keeps blast reason enum in parity and PrBriefResponse round-trips', () => {
+    expect(BriefBlastReason.options).toEqual(BlastDegradedReason.options);
+    const r = {
+      pr_id: '00000000-0000-4000-8000-000000000000',
+      brief: null,
+      generating: false,
+      stale: false,
+      current_head_sha: 'abc',
+    };
+    expect(PrBriefResponse.parse(r)).toEqual(r);
   });
 });

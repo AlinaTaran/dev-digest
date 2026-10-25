@@ -9,6 +9,7 @@ import { usePullDetail, usePulls } from "@/lib/hooks";
 import { usePrReviews, usePrActiveRuns, usePrRuns, useDeleteRun } from "@/lib/hooks/reviews";
 import { useActiveRepo, useRepoNotFound } from "@/lib/repo-context";
 import { githubPrUrl } from "@/lib/github-urls";
+import { diffTargetParams } from "@/lib/diff-target";
 
 export function usePrDetailPage() {
   const { repoId, number } = useParams<{ repoId: string; number: string }>();
@@ -60,8 +61,12 @@ export function usePrDetailPage() {
   // tab AND target the finding — one client-side replace, no reload.
   const goToFinding = (findingId: string) => pushParams({ tab: "findings", finding: findingId });
 
+  // Brief citation → Files changed tab, targeting file (+ line).
+  const goToDiffTarget = (file: string, line?: number) => pushParams(diffTargetParams(file, line));
+
   // Reviews come newest-first; each is its own run (grouped into accordions).
   const runs = reviews ?? [];
+  const latestVerdictReview = runs.find((r) => r.verdict != null) ?? null;
   const allFindings = runs.flatMap((r) => r.findings);
   const repoFullName = activeRepo?.full_name ?? null;
 
@@ -76,13 +81,16 @@ export function usePrDetailPage() {
     error,
     refetch,
     tab,
-    setTab: (t: string) => setParam("tab", t),
+    // Switching tabs drops any diff deep-link target (file/line).
+    setTab: (t: string) => pushParams({ tab: t, file: null, line: null }),
     blastView,
     setBlastView: (v: "tree" | "graph") => setParam("blast", v === "tree" ? null : v),
     traceRunId,
     setTrace: (id: string | null) => setParam("trace", id),
     targetFindingId,
     goToFinding,
+    goToDiffTarget,
+    latestVerdictReview,
     runs,
     prRuns,
     liveRunIds,

@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { SectionLabel, Button } from "@devdigest/ui";
 import { DiffViewer, SmartDiffViewer, dedupeFilesByPath, type DiffCommentApi } from "@/components/diff-viewer";
 import { usePrComments, useCreatePrComment, usePrReviews } from "@/lib/hooks/reviews";
+import { parseDiffTarget } from "@/lib/diff-target";
 import { useSmartDiff } from "@/lib/hooks/smart-diff";
 import { notify } from "@/lib/toast";
 import type { PrFile, Finding } from "@devdigest/shared";
@@ -24,6 +25,7 @@ type Order = "smart" | "original";
 
 export function DiffTab({ prId, filesCount, files, canComment, onFindingClick }: DiffTabProps) {
   const t = useTranslations("smart-diff");
+  const tBrief = useTranslations("brief");
   const { data: comments } = usePrComments(prId);
   const create = useCreatePrComment(prId);
   // Comments start hidden so the diff is clean by default — toggle to reveal.
@@ -62,6 +64,27 @@ export function DiffTab({ prId, filesCount, files, canComment, onFindingClick }:
   // diff fragments for one file); collapse them so cards keyed by `path` don't
   // collide as React keys. Feeds both the grouped and the fallback viewer.
   const uniqueFiles = React.useMemo(() => dedupeFilesByPath(files), [files]);
+
+  // Deep link (?file&line, e.g. from the PR brief). Parsed straight from the URL so a
+  // cold direct visit works with no prior click. The target stays active across an
+  // order toggle: the cards remount and flash again — intended (Decision 18).
+  const parsedTarget = parseDiffTarget(
+    searchParams,
+    uniqueFiles.map((f) => f.path),
+  );
+  const target = parsedTarget?.inDiff ? { file: parsedTarget.file, line: parsedTarget.line } : undefined;
+  const targetKey = target ? `${target.file}:${target.line ?? ""}` : null;
+  const [reached, setReached] = React.useState<{ key: string; found: boolean } | null>(null);
+  const onTargetReached = React.useCallback(
+    (found: boolean) => setReached(targetKey ? { key: targetKey, found } : null),
+    [targetKey],
+  );
+  const lineNotInDiffText =
+    target?.line != null ? tBrief("diffNav.lineNotInDiff", { line: target.line }) : undefined;
+  const announce =
+    target && target.line != null && reached?.key === targetKey && reached.found
+      ? tBrief("diffNav.announce", { line: target.line, path: target.file })
+      : "";
 
   const additions = uniqueFiles.reduce((sum, f) => sum + (f.additions ?? 0), 0);
   const deletions = uniqueFiles.reduce((sum, f) => sum + (f.deletions ?? 0), 0);
@@ -118,6 +141,15 @@ export function DiffTab({ prId, filesCount, files, canComment, onFindingClick }:
         {t("sectionHeader.title")} · {t("sectionHeader.subline", { count: filesCount, additions, deletions })}
       </SectionLabel>
 
+      {parsedTarget && !parsedTarget.inDiff && (
+        <div role="note" style={{ padding: "8px 12px", fontSize: 13, color: "var(--text-muted)" }}>
+          {tBrief("diffNav.fileNotInDiff", { path: parsedTarget.file })}
+        </div>
+      )}
+      <div aria-live="polite" className="sr-only">
+        {announce}
+      </div>
+
       {smartDiff ? (
         <SmartDiffViewer
           smartDiff={smartDiff}
@@ -126,11 +158,20 @@ export function DiffTab({ prId, filesCount, files, canComment, onFindingClick }:
           commenting={commenting}
           grouped={order === "smart"}
           onFindingClick={onFindingClick}
+          target={target}
+          lineNotInDiffText={lineNotInDiffText}
+          onTargetReached={onTargetReached}
         />
       ) : (
         // Smart Diff still loading or unavailable — fall back to the plain
         // flat viewer so "Files changed" never blocks on the new endpoint.
-        <DiffViewer files={uniqueFiles} commenting={commenting} />
+        <DiffViewer
+          files={uniqueFiles}
+          commenting={commenting}
+          target={target}
+          lineNotInDiffText={lineNotInDiffText}
+          onTargetReached={onTargetReached}
+        />
       )}
     </section>
   );

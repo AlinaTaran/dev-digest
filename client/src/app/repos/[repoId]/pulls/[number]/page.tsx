@@ -100,6 +100,8 @@ export default function PRDetailPage() {
             headSha={pr.head_sha}
             blastView={p.blastView}
             onBlastViewChange={p.setBlastView}
+            latestVerdictReview={p.latestVerdictReview}
+            onNavigateToDiff={p.goToDiffTarget}
           />
         )}
 

@@ -28,7 +28,7 @@ export const FEATURE_MODELS: FeatureModelDef[] = [
   {
     id: "risk_brief",
     label: "Risk Brief",
-    description: "Assesses merge risks for a pull request.",
+    description: "Writes the PR Brief: summary, risk areas and review focus.",
     defaultProvider: "openrouter",
     defaultModel: "deepseek/deepseek-v4-flash",
   },

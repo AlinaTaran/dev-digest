@@ -1,0 +1,24 @@
+{
+  "name": "PR Brief on Overview renders the stored brief and deep-links a Review focus item into the diff",
+  "description": "From PR #482 Overview, the seeded stored brief renders (summary + Review focus reason), survives a reload, and clicking the Review focus item opens Files changed at src/config.ts line 12. 'Line 12 in viewport' is a manual check (not assertable here). Read-only seeded data (no model call). Assumes a freshly-seeded DB (see e2e/README.md).",
+  "steps": [
+    { "cmd": ["open", "{BASE}/"], "label": "load the app root" },
+    { "cmd": ["wait", "--url", "/pulls"], "label": "land on the PR list" },
+    { "cmd": ["find", "text", "Add rate limiting to public API endpoints", "click"], "label": "open the PR row" },
+    { "cmd": ["wait", "--url", "/pulls/482"], "label": "navigate to the PR detail route" },
+    { "cmd": ["wait", "--load", "networkidle"], "label": "PR detail data settles" },
+    { "cmd": ["wait", "--text", "Introduces per-client throttling for unauthenticated public endpoints"], "label": "stored brief summary renders" },
+    { "cmd": ["wait", "--text", "Start here: how the new throttling limits and the payment key are loaded from config."], "label": "Review focus reason renders" },
+    { "cmd": ["reload"], "label": "reload the page" },
+    { "cmd": ["wait", "--text", "Introduces per-client throttling for unauthenticated public endpoints"], "label": "same brief after reload" },
+    { "cmd": ["wait", "--load", "networkidle"], "label": "page hydrates after reload" },
+    { "cmd": ["scrollintoview", "[data-brief-section=\"review-focus\"] button"], "label": "scroll the Review focus item into view" },
+    { "cmd": ["find", "first", "[data-brief-section=\"review-focus\"] button", "click"], "label": "click the Review focus item" },
+    { "cmd": ["wait", "--url", "tab=diff"], "label": "diff tab is active in the URL" },
+    { "cmd": ["wait", "--url", "file=src%2Fconfig.ts"], "label": "deep link carries the file" },
+    { "cmd": ["wait", "--text", "brief-seed-line-12"], "label": "seeded line 12 renders in the diff" },
+    { "cmd": ["reload"], "label": "reload the deep-link URL" },
+    { "cmd": ["wait", "--url", "line=12"], "label": "deep link keeps line=12" },
+    { "cmd": ["wait", "--text", "brief-seed-line-12"], "label": "seeded line 12 renders after reload" }
+  ]
+}

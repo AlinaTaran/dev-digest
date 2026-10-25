@@ -47,3 +47,4 @@ export interface PrRowView {
   updated: string;
 }
 export type { BlastRadiusResponse, BlastDownstreamEntry, BlastCallerNode, BlastStats, BlastDegradedReason, PrHistoryResponse, PrHistoryItem, PrHistoryReason } from "@devdigest/shared";
+export type { PrBriefResponse, BriefRisk, ReviewFocusItem, BriefMissingInput } from "@devdigest/shared";

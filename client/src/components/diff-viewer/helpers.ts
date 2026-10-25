@@ -85,6 +85,28 @@ export function anchorId(path: string, lineNo: number): string {
   return `diff-line:${path}:${lineNo}`;
 }
 
+/** Scroll a rendered line to the centre and flash it with the accent background,
+ *  restoring after `ms`. Returns a cleanup that clears the timer AND restores the
+ *  styles immediately — call it from an effect cleanup (unmount / retarget). The
+ *  caller must never `setState` on one of that effect's own dependencies, or the
+ *  cleanup cancels the restore timer (see client/INSIGHTS.md, 2026-07-09). */
+export function flashLine(el: HTMLElement, ms = 1500): () => void {
+  el.scrollIntoView?.({ behavior: "smooth", block: "center" });
+  const prevBackground = el.style.backgroundColor;
+  const prevTransition = el.style.transition;
+  el.style.transition = "background-color 0.2s ease";
+  el.style.backgroundColor = "var(--accent-bg)";
+  const restore = () => {
+    el.style.backgroundColor = prevBackground;
+    el.style.transition = prevTransition;
+  };
+  const timer = setTimeout(restore, ms);
+  return () => {
+    clearTimeout(timer);
+    restore();
+  };
+}
+
 /** Lock files, `package.json`, generated output, and snapshots — files whose
  *  diff is noise to a human reviewer. Used to collapse the real patch behind a
  *  "Mechanical changes" placeholder unless the file actually has findings. */

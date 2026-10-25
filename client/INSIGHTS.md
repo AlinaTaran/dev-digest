@@ -73,6 +73,8 @@ or a trap someone hit — so the next person (or agent) doesn't relearn it.
 
 ## Recurring Errors & Fixes
 
+- **2026-10-25 — RTL: `mutation.mutate()` calls `mutationFn` in a microtask, so `expect(post).toHaveBeenCalledTimes(1)` right after `fireEvent.click` sees 0.** `await screen.findBy…` (the disabled/"Generating…" button) first, then assert the call count. Colocated tests importing `messages/en/*.json` need one `../` per directory level to `client/` (OverviewTab/IntentPanel are 8, PrBrief subfolders 9). `renderHook` tests that mock `../api` as `{ api }` must spread `vi.importActual` if the hook imports `ApiError`.
+
 - **2026-10-19 — Resync "completes" instantly if started before index-state has loaded.** The baseline `updatedAt` is `undefined`, so the first refetch (`old !== undefined`) looks like completion and the stale degraded map is refetched. Gate start on a loaded baseline (`useBlastResync().canStart`; Resync button disabled until then). Test such TanStack polling hooks with `renderHook` + a real `QueryClient`, `vi.mock('../api')`, `vi.useFakeTimers()` and `await act(() => vi.advanceTimersByTimeAsync(ms))`.
 
 - **2026-10-19 — There is no `--text` CSS variable; use `--text-primary` (also `--text-secondary`, `--text-muted`).** An undefined `var(--text)` in an SVG `fill` silently falls back to black, so the BlastGraph node labels were invisible on the dark theme while tests stayed green (jsdom doesn't resolve CSS vars). Before using a token, check it exists in `src/vendor/ui/styles.css` (`--accent-fg` doesn't either — always give it a fallback).

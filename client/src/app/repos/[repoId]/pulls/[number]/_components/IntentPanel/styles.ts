@@ -48,34 +48,4 @@ export const s = {
     flexDirection: "column",
     gap: 16,
   } satisfies CSSProperties,
-  riskSection: {
-    marginTop: 20,
-  } satisfies CSSProperties,
-  riskRow: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: 8,
-    marginTop: 8,
-  } satisfies CSSProperties,
-  riskChip: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 6,
-    padding: "4px 10px",
-    borderRadius: 999,
-    fontSize: 12.5,
-    fontWeight: 500,
-    border: "1px solid transparent",
-    lineHeight: 1.4,
-  } satisfies CSSProperties,
 } as const;
-
-/** Severity → chip color tokens, mirroring the SEV map's crit/warn tokens. */
-export const RISK_SEV: Record<
-  "high" | "medium" | "low",
-  { color: string; bg: string; border: string }
-> = {
-  high: { color: "var(--crit)", bg: "var(--crit-bg)", border: "var(--crit)" },
-  medium: { color: "var(--warn)", bg: "var(--warn-bg)", border: "var(--warn)" },
-  low: { color: "var(--text-muted)", bg: "var(--bg-hover)", border: "var(--border)" },
-};

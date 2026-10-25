@@ -41,6 +41,16 @@ export class ProjectContextRepository {
     return row;
   }
 
+  /** Enabled agents of the workspace, oldest first (id breaks ties). */
+  async enabledAgentIds(workspaceId: string): Promise<string[]> {
+    const rows = await this.db
+      .select({ id: t.agents.id })
+      .from(t.agents)
+      .where(and(eq(t.agents.workspaceId, workspaceId), eq(t.agents.enabled, true)))
+      .orderBy(asc(t.agents.createdAt), asc(t.agents.id));
+    return rows.map((r) => r.id);
+  }
+
   async getSkill(workspaceId: string, skillId: string): Promise<{ id: string; name: string } | undefined> {
     const [row] = await this.db
       .select({ id: t.skills.id, name: t.skills.name })

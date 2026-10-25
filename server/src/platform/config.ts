@@ -54,6 +54,11 @@ const EnvSchema = z.object({
     (v) => (v === '' ? undefined : v),
     z.coerce.number().int().positive().optional(),
   ),
+  // PR Brief response deadline (ms). '' → default, as for ONBOARDING_TIMEOUT_MS.
+  BRIEF_TIMEOUT_MS: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z.coerce.number().int().positive().optional(),
+  ),
 });
 
 /**
@@ -99,6 +104,12 @@ export type AppConfig = {
    * records `failed/timeout`. Default 100 000; env ONBOARDING_TIMEOUT_MS, clamped to ONBOARDING_TIMEOUT_CEILING_MS.
    */
   onboardingTimeoutMs: number;
+  /**
+   * Deadline for answering one PR Brief generation request (ms). Default 60 000; env BRIEF_TIMEOUT_MS.
+   * It bounds the HTTP **response**, not the provider call: provider calls cannot be aborted, so an
+   * abandoned call keeps running until it settles (its result is then discarded, never saved).
+   */
+  briefTimeoutMs: number;
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -119,5 +130,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     repoIntelEnabled: parsed.REPO_INTEL_ENABLED !== 'false',
     externalFetchEnabled: parsed.EXTERNAL_FETCH_ENABLED === 'true',
     onboardingTimeoutMs: Math.min(parsed.ONBOARDING_TIMEOUT_MS ?? 100_000, ONBOARDING_TIMEOUT_CEILING_MS),
+    briefTimeoutMs: parsed.BRIEF_TIMEOUT_MS ?? 60_000,
   };
 }

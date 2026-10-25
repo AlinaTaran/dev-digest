@@ -79,3 +79,16 @@ describe('OpenRouterProvider transport retry', () => {
     expect(sleep).not.toHaveBeenCalled();
   });
 });
+
+describe('OpenRouterProvider per-request timeout', () => {
+  it('passes req.timeoutMs (timeout + abort signal) to the SDK call, and nothing when absent', async () => {
+    const create = vi.fn().mockResolvedValue(okRes('{"ok":true}'));
+    const { p } = makeProvider(create);
+    await p.completeStructured({ ...req, timeoutMs: 1234 });
+    const opts = create.mock.calls[0]![1] as { timeout: number; signal: AbortSignal };
+    expect(opts.timeout).toBe(1234);
+    expect(opts.signal).toBeInstanceOf(AbortSignal);
+    await p.completeStructured(req);
+    expect(create.mock.calls[1]![1]).toBeUndefined();
+  });
+});

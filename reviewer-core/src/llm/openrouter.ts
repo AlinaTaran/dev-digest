@@ -73,6 +73,11 @@ export class OpenRouterProvider implements LLMProvider {
     let tokensOut = 0;
     let costFromApi: number | null = null;
     let lastRaw = '';
+    // Per-request deadline: one signal covers every SDK retry and repair attempt, so the
+    // caller's budget is a hard cap. Absent `timeoutMs`, the client-level defaults apply.
+    const requestOptions: OpenAI.RequestOptions | undefined = req.timeoutMs
+      ? { timeout: req.timeoutMs, signal: AbortSignal.timeout(req.timeoutMs) }
+      : undefined;
 
     for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
       const params: OpenAI.Chat.ChatCompletionCreateParamsNonStreaming = {
@@ -94,7 +99,7 @@ export class OpenRouterProvider implements LLMProvider {
       // Transport retry is separate from the parse-repair loop: a failed
       // transport attempt consumed no tokens, so it never touches `attempt`.
       const res = await withTransportRetry(
-        () => this.client.chat.completions.create(params),
+        () => this.client.chat.completions.create(params, requestOptions),
         this.transportRetry,
       );
 

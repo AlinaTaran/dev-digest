@@ -41,6 +41,13 @@ export interface ResolvedContext {
   cloneSha: string | null;
 }
 
+/** Spec docs for the PR Brief (union across enabled agents). */
+export interface BriefContext {
+  entries: { path: string; text: string }[];
+  skipped: { path: string; reason: MissingReason }[];
+  moreAvailable: boolean;
+}
+
 /** Result of reading one doc for display/injection. */
 type DocRead =
   | { ok: true; text: string; bytes: Uint8Array }
@@ -304,6 +311,59 @@ export class ProjectContextService {
         missing: effective.map((e) => ({ path: e.path, reason: 'unreadable' as const })),
         cloneSha: null,
       };
+    }
+  }
+
+  /**
+   * PR Brief specs: the union of docs attached to every ENABLED agent of the workspace (plus their
+   * enabled linked skills), agents in creation order, deduped first-wins, capped at
+   * PROJECT_CONTEXT_MAX_DOCS. Reads in order until `maxDocs` succeed. NEVER throws; never logs content.
+   */
+  async resolveForBrief(workspaceId: string, repoId: string, maxDocs = 5): Promise<BriefContext> {
+    const empty: BriefContext = { entries: [], skipped: [], moreAvailable: false };
+    let union: string[] = [];
+    try {
+      const repo = await this.repo.getRepo(workspaceId, repoId);
+      if (!repo) return empty;
+      const [globs, agentIds] = await Promise.all([
+        this.repo.getGlobs(workspaceId),
+        this.repo.enabledAgentIds(workspaceId),
+      ]);
+      const seen = new Set<string>();
+      for (const agentId of agentIds) {
+        const [agentPaths, linked] = await Promise.all([
+          this.repo.agentPaths(agentId, repo.id),
+          this.repo.linkedSkillDocs(agentId, repo.id),
+        ]);
+        for (const e of resolveEffective(agentPaths, linked)) {
+          if (!seen.has(e.path)) {
+            seen.add(e.path);
+            union.push(e.path);
+          }
+        }
+      }
+      union = union.slice(0, PROJECT_CONTEXT_MAX_DOCS);
+      if (union.length === 0) return empty;
+
+      if (!(await this.isCloned(repo))) {
+        return { entries: [], skipped: union.map((path) => ({ path, reason: 'not cloned' as const })), moreAvailable: false };
+      }
+      const entries: BriefContext['entries'] = [];
+      const skipped: BriefContext['skipped'] = [];
+      let i = 0;
+      for (; i < union.length && entries.length < maxDocs; i += 1) {
+        const path = union[i]!;
+        if (validateContextPath(path, globs) !== null) {
+          skipped.push({ path, reason: 'rejected path' });
+          continue;
+        }
+        const read = await this.readDoc(repo, path);
+        if (read.ok) entries.push({ path, text: read.text });
+        else skipped.push({ path, reason: read.reason });
+      }
+      return { entries, skipped, moreAvailable: i < union.length };
+    } catch {
+      return { entries: [], skipped: union.map((path) => ({ path, reason: 'unreadable' as const })), moreAvailable: false };
     }
   }
 

@@ -35,6 +35,22 @@ or a trap someone hit — so the next person (or agent) doesn't relearn it.
   `</untrusted>` in the payload to `<\/untrusted>` so author/repo text can't close our
   delimiter and break out into instructions. Never string-concat raw external content into
   the prompt; add a new `wrapUntrusted('label', …)` section in `assemblePrompt` instead.
+- **2026-10-25 — the OpenRouter provider has NO per-request timeout.** `openrouter.ts` sets
+  only the client-level `timeout: opts.timeoutMs ?? 90_000` at construction (the SDK also
+  retries on timeout/5xx/429); a per-call `timeoutMs` on the request is ignored. And the
+  server's `withTimeout` only rejects the outer promise — it never aborts the HTTP call. So
+  a caller-side 60 s timeout leaves the model call running: any single-flight/"exactly one
+  LLM call" guard must stay held until the INNER call settles, not until the timeout fires,
+  or a retry starts a second paid call (found by cross-model review of the PR Brief plan).
+- **2026-10-25 (later) — supersedes the entry above: OpenRouter now DOES honour per-request
+  `timeoutMs`.** `openrouter.ts` passes `{ timeout, signal: AbortSignal.timeout(timeoutMs) }`
+  as SDK request options when `req.timeoutMs` is set (unchanged when absent). The SDK
+  `timeout` is per attempt, so the shared `signal` is what caps retries + the repair loop.
+  Callers that pass `timeoutMs` (brief service, onboarding `job.ts`) are now really bounded.
+  Caveat: an abort surfaces as `APIUserAbortError`/`APIConnectionTimeoutError`, not
+  `TimeoutError` — classify errors after the deadline as timeouts, or the caller may report
+  `llm_failed` on a millisecond race. Single-flight guards should still be held until the
+  inner call settles.
 
 ## Recurring Errors & Fixes
 

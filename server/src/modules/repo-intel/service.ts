@@ -862,6 +862,40 @@ export class RepoIntelService implements RepoIntel {
     }
     return paths;
   }
+
+  /** Index file list for onboarding grounding; falls back to symbol paths when rank was skipped. */
+  async getIndexedFiles(repoId: string): Promise<string[]> {
+    if (!this.container.config.repoIntelEnabled) return [];
+    try {
+      const ranked = await this.repo.getRankedFilePaths(repoId);
+      if (ranked.length > 0) return ranked;
+      return await this.repo.getDistinctSymbolPaths(repoId);
+    } catch {
+      return [];
+    }
+  }
+
+  async getFanIn(repoId: string, paths: string[]): Promise<Map<string, number>> {
+    if (!this.container.config.repoIntelEnabled) return new Map();
+    try {
+      const rows = await this.repo.getFanInCounts(repoId, paths);
+      return new Map(rows.map((r) => [r.path, r.count]));
+    } catch {
+      return new Map();
+    }
+  }
+
+  async getEndpointFacts(
+    repoId: string,
+    limit: number,
+  ): Promise<{ path: string; endpoints: string[] }[]> {
+    if (!this.container.config.repoIntelEnabled || limit <= 0) return [];
+    try {
+      return await this.repo.getFileFactsWithEndpoints(repoId, limit);
+    } catch {
+      return [];
+    }
+  }
 }
 
 /** How many top-ranked files seed `getCriticalPaths` dependency chains. */

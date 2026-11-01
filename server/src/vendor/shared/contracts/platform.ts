@@ -59,7 +59,7 @@ export const FEATURE_MODELS: FeatureModelDef[] = [
   {
     id: 'risk_brief',
     label: 'Risk Brief',
-    description: 'Assesses merge risks for a pull request.',
+    description: 'Writes the PR Brief: summary, risk areas and review focus.',
     defaultProvider: 'openrouter',
     defaultModel: 'deepseek/deepseek-v4-flash',
   },
@@ -93,6 +93,8 @@ export const SettingsKnown = z.object({
   automatic_reviews: z.boolean().default(false),
   /** Per-feature model overrides (provider+model), keyed by FeatureModelId. */
   feature_models: z.record(FeatureModelId, FeatureModelChoice).default({}),
+  /** Project Context search globs (shape only; validated in the settings route). */
+  project_context_globs: z.array(z.string()).optional(),
 });
 export type SettingsKnown = z.infer<typeof SettingsKnown>;
 

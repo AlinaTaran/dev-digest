@@ -24,6 +24,9 @@ export function SmartDiffViewer({
   commenting,
   grouped = true,
   onFindingClick,
+  target,
+  lineNotInDiffText,
+  onTargetReached,
 }: {
   smartDiff: SmartDiff;
   files: PrFile[];
@@ -33,6 +36,10 @@ export function SmartDiffViewer({
   grouped?: boolean;
   /** Clicking a code-line severity chip jumps to that finding in "Agent runs". */
   onFindingClick?: (findingId: string) => void;
+  /** Deep-link target: the matching card opens, scrolls and flashes the line. */
+  target?: { file: string; line: number | null };
+  lineNotInDiffText?: string;
+  onTargetReached?: (found: boolean) => void;
 }) {
   const t = useTranslations("smart-diff");
 
@@ -59,6 +66,9 @@ export function SmartDiffViewer({
         findingsLabel={findings.length > 0 ? t("findingsBadge", { count: findings.length }) : undefined}
         mechanicalPlaceholderText={t("mechanicalPlaceholder")}
         onFindingClick={onFindingClick}
+        {...(target?.file === path
+          ? { forceOpen: true, scrollToLine: target.line, lineNotInDiffText, onTargetReached }
+          : {})}
       />
     );
   }

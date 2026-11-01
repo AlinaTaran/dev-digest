@@ -7,22 +7,38 @@ the whole team shares them.
 
 | Agent | Purpose | Model | Writes code? |
 |---|---|---|---|
+| [`spec-creator`](./spec-creator.md) | Writes the **product spec** (what & why) from user-provided design sources — analyzes gaps, edge cases, cross-module communication, UX; blocking questions first; EARS acceptance criteria; may include workflow / service-communication diagrams and boundary contracts, but no implementation detail. First step of SDD — its approved spec is `implementation-planner`'s input. Writes only `<module>/specs/` or root `specs/` (cross-module). | `opus` | No (only spec files) |
 | [`researcher`](./researcher.md) | Read-only information finder (project codebase or web), returns a structured, honestly-assessed result. | `sonnet` | No |
-| [`planner`](./planner.md) | Read-only architect → emits a structured **Development spec** (`docs/spec/<slug>.md`) that decomposes work into parallelizable, file-disjoint tasks. | `opus` | No (only the spec artifact) |
+| [`implementation-planner`](./implementation-planner.md) | Read-only architect → reviews **existing** requirements (questions + recommendations), asks multi- vs single-agent mode, then emits an **implementation plan** (`docs/plans/<slug>.md`). Never writes specs. | `opus` | No (only the plan artifact) |
 | [`implementer`](./implementer.md) | Implements **one** task from a spec (backend *or* UI), runs in parallel, self-verifies with the module's tests + typecheck. | `sonnet` | Yes |
 | [`test-writer`](./test-writer.md) | Writes automated tests for any module — client (RTL/jsdom), server (vitest unit + `*.it.test.ts`), reviewer-core, and e2e flows. Writes **test files only**. | `sonnet` | Tests only |
-| [`architecture-reviewer`](./architecture-reviewer.md) | Read-only **architectural** review — onion/layering, boundary/port leakage, coupling, reviewer-core purity, frontend structure. Not line-level bug/style hunting. | `opus` | No |
-| [`plan-verifier`](./plan-verifier.md) | Read-only **requirement-coverage** check: verifies every requirement / acceptance criterion of a plan or dev spec was actually delivered, with file evidence + a real test re-run. | `opus` | No |
+| [`architecture-reviewer`](./architecture-reviewer.md) | Read-only **architectural** review — onion/layering, boundary/port leakage, coupling, reviewer-core purity, frontend structure. Not line-level bug/style hunting. | `sonnet` | No |
+| [`plan-verifier`](./plan-verifier.md) | Read-only **requirement-coverage** check: verifies every requirement / acceptance criterion of a plan (and its source spec's `AC-n`/`NFR-n`) was actually delivered, with file evidence + a real test re-run. | `sonnet` | No |
 | [`doc-writer`](./doc-writer.md) | Generates/maintains documentation (+ Mermaid diagrams) — describes shipped features, converts plans into docs. Writes **docs only**. | `sonnet` | Docs only |
 
 ## The full agent loop
 
-The seven agents compose into one end-to-end loop; the middle two (`planner`/`implementer`)
+The eight agents compose into one end-to-end loop; the middle two (`implementation-planner`/`implementer`)
 are the orchestrator-worker core, the rest wrap around them:
 
 ```
-researcher → planner → implementer → test-writer → architecture-reviewer / plan-verifier → doc-writer
+spec-creator → researcher → implementation-planner → implementer → test-writer → architecture-reviewer / plan-verifier → doc-writer
 ```
+
+**Day-to-day SDD flow (token-lean):** `spec-creator` and `implementation-planner` are run
+manually, each in its own chat. The approved plan is then executed by the
+[`/run-plan`](../skills/run-plan/SKILL.md) command, which drives it to a review-ready state:
+
+```
+/run-plan plan:docs/plans/<feature>.md [mode:single|multi] [max-fix:N]
+  implementer ×N (DAG waves, targeted self-verify)
+  → architecture-reviewer ∥ pr-self-review (no arch lenses) ∥ plan-verifier (plan + spec AC)
+  → bounded fix loop (max-fix, default 3; CRITICAL/HIGH + Missing/Partial; re-review changed files only)
+  → report (+ "re-run pr-self-review" if fixes made its report stale)
+```
+
+Fully autonomous (the plan is approved beforehand). `test-writer` and `doc-writer` are not
+part of `/run-plan`; nothing is committed or pushed.
 
 `test-writer` writes the tests a slice needs, `architecture-reviewer` and `plan-verifier`
 give an unbiased second opinion (quality vs. requirement-coverage), and `doc-writer` records
@@ -31,17 +47,25 @@ the original three (see below).
 
 ## The Plan → Implement loop
 
-`planner` and `implementer` are an **orchestrator-worker** pair:
+`implementation-planner` and `implementer` are an **orchestrator-worker** pair:
 
-1. `planner` reads the task + the relevant module `INSIGHTS.md`, then writes a spec to
-   `docs/spec/<slug>.md`. Each task is tagged **Type** (backend / ui / core / e2e), the
-   **skills** it must apply, its **Owned paths**, `depends-on`, and **Acceptance**. A
-   top-level owned-paths matrix proves the parallel tasks are file-disjoint.
-2. Several `implementer` agents run **in parallel on the main branch**, each taking one task.
+1. **Phase 1 — review.** `implementation-planner` reads the existing requirements (e.g.
+   `docs/spec/<slug>.md` — it never writes or edits specs), the affected code and the module
+   `INSIGHTS.md`, and returns a **Requirements review**: blocking questions, non-blocking
+   recommendations, risks, and an **execution-mode** choice (multi-agent vs single-agent) with
+   its recommendation. Subagents can't prompt the user, so the **caller** relays these via
+   `AskUserQuestion` and resumes the planner (`SendMessage`) with the answers.
+2. **Phase 2 — plan.** It writes `docs/plans/<slug>.md`. Each task is tagged **Type**
+   (backend / ui / core / e2e), the **skills** it must apply, its **Owned paths**, and
+   **Acceptance**, plus a requirement-traceability table. In multi-agent mode a top-level
+   owned-paths matrix proves the parallel tasks are file-disjoint; in single-agent mode the
+   plan is one ordered list of steps with checkpoints.
+3. Multi-agent: several `implementer` agents run **in parallel on the main branch**, each taking one task.
+   Single-agent: one pass (main session or one `implementer`) walks the steps in order.
    Parallel-safety comes from every task's non-overlapping **Owned paths** (no worktree
    isolation). Each implementer writes the code + its tests and takes the module suite +
    typecheck to green.
-3. Wide review (architecture / security / cross-cutting / the PR gate) is **not** the
+4. Wide review (architecture / security / cross-cutting / the PR gate) is **not** the
    implementer's job — it's left to the existing `pr-self-review` skill.
 
 Both agents inject the **same full set of 12 skills** via `skills:` frontmatter, so plan and
@@ -53,28 +77,28 @@ execution share one rulebook. The skill → module routing mirrors
 - **core** (`reviewer-core/**`) → onion-architecture (stay pure) · zod · typescript-expert
 - **always** → typescript-expert · security · engineering-insights
 
-**Insights are read at both stages (hybrid):** the planner folds cross-cutting insights into
+**Insights are read at both stages (hybrid):** the implementation-planner folds cross-cutting insights into
 each task at planning time; each implementer additionally reads its own `<module>/INSIGHTS.md`
 on the spot before writing code, and appends substantial new discoveries (append-only).
 
-## Design basis & sources (`planner` + `implementer`)
+## Design basis & sources (`implementation-planner` + `implementer`)
 
 These two agents were designed from published Anthropic / Claude Code guidance. Practices
 applied, with sources:
 
 | Practice | How it's used here | Source |
 |---|---|---|
-| **Orchestrator-worker pattern** | planner decomposes → parallel implementers execute | [Building Effective AI Agents](https://www.anthropic.com/research/building-effective-agents) · [Multi-agent research system](https://www.anthropic.com/engineering/multi-agent-research-system) |
+| **Orchestrator-worker pattern** | implementation-planner decomposes → parallel implementers execute | [Building Effective AI Agents](https://www.anthropic.com/research/building-effective-agents) · [Multi-agent research system](https://www.anthropic.com/engineering/multi-agent-research-system) |
 | **Decompose by shared context, not by role** | implementer owns its code *and* tests together; UI vs backend is a real context split | [When to use multi-agent systems](https://claude.com/blog/building-multi-agent-systems-when-and-how-to-use-them) |
-| **Model tiering (Opus lead / Sonnet worker)** | planner `opus`, implementer `sonnet` | [Multi-agent research system](https://www.anthropic.com/engineering/multi-agent-research-system) |
+| **Model tiering (Opus lead / Sonnet worker)** | implementation-planner `opus`, implementer `sonnet` | [Multi-agent research system](https://www.anthropic.com/engineering/multi-agent-research-system) |
 | **Inject skills directly via `skills:` frontmatter** | full skill bodies preloaded at startup (deterministic; also sidesteps `next-best-practices` being `user-invocable: false`) | [Sub-agents — preload skills](https://code.claude.com/docs/en/sub-agents#preload-skills-into-subagents) |
 | **`description` as router / "Use proactively"** | trigger-first descriptions drive auto-delegation | [Sub-agents — automatic delegation](https://code.claude.com/docs/en/sub-agents#understand-automatic-delegation) |
-| **Filesystem handoff** | planner writes the spec to a file instead of only chat | [Multi-agent research system](https://www.anthropic.com/engineering/multi-agent-research-system) |
+| **Filesystem handoff** | implementation-planner writes the plan to a file instead of only chat | [Multi-agent research system](https://www.anthropic.com/engineering/multi-agent-research-system) |
 | **Fresh isolated context → self-contained tasks** | each task is executable standalone; implementer also gets other tasks' owned paths | [Sub-agents — context](https://code.claude.com/docs/en/sub-agents#manage-subagent-context) |
 | **Explicit objectives + boundaries** (avoid vague delegation) | per-task Type / Owned paths / Acceptance | [Multi-agent research system](https://www.anthropic.com/engineering/multi-agent-research-system) |
 | **Verification pattern + "early-victory problem"** | narrow self-check with a fixed checklist + explicit exclusions; must run the *complete* suite | [When to use multi-agent systems](https://claude.com/blog/building-multi-agent-systems-when-and-how-to-use-them) |
-| **Tight tool allowlists** | planner read-only (Write only the spec); implementer gets Edit/Write | [Sub-agents — best practices](https://code.claude.com/docs/en/sub-agents#example-subagents) |
-| **Structured plan artifact** | fixed spec template (tasks, graph, owned-paths matrix) | [Sub-agents docs](https://code.claude.com/docs/en/sub-agents) |
+| **Tight tool allowlists** | implementation-planner read-only (Write only the plan); implementer gets Edit/Write | [Sub-agents — best practices](https://code.claude.com/docs/en/sub-agents#example-subagents) |
+| **Structured plan artifact** | fixed plan template (tasks, graph, owned-paths matrix, traceability) | [Sub-agents docs](https://code.claude.com/docs/en/sub-agents) |
 
 **Deliberately not adopted:** `isolation: worktree`
 ([Worktrees docs](https://code.claude.com/docs/en/worktrees)) — the official pattern for

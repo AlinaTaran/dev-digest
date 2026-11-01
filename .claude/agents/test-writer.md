@@ -60,7 +60,8 @@ govern your work. There is **no** e2e-specific skill; e2e rules live in `e2e/CLA
 - Read the target file(s)/feature you're asked to test.
 - Read `<module>/INSIGHTS.md` for the module you're working in — focus on *What Doesn't
   Work*, *Codebase Patterns*, *Recurring Errors & Fixes*.
-- If a `docs/spec/<slug>.md` or `<module>/specs/*` entry exists for this feature, read it —
+- If a `docs/spec/<slug>.md` (requirements), `docs/plans/<slug>.md` (implementation plan) or
+  `<module>/specs/*` entry exists for this feature, read it —
   it's the preferred source of intended behavior (see Rule 1 below).
 
 ## Step 2 — Classify the module → Type → which injected skills govern

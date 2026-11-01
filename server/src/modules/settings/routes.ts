@@ -9,7 +9,9 @@ import {
 } from '@devdigest/shared';
 import * as t from '../../db/schema.js';
 import { getContext } from '../_shared/context.js';
-import { GITHUB_PROVIDER, SECRET_KEY_BY_PROVIDER } from './constants.js';
+import { AppError } from '../../platform/errors.js';
+import { validateGlobs } from '../project-context/paths.js';
+import { GITHUB_PROVIDER, INVALID_PROJECT_CONTEXT_GLOBS, SECRET_KEY_BY_PROVIDER } from './constants.js';
 import { rowsToSettings } from './helpers.js';
 
 /**
@@ -49,6 +51,11 @@ export default async function settingsRoutes(appBase: FastifyInstance) {
   app.put('/settings', { schema: { body: SettingsUpdate } }, async (req) => {
     const { workspaceId, userId } = await getContext(container, req);
     const body = req.body;
+    // Validate BEFORE any upsert so a rejected value leaves the old one intact (AC-12, AC-13).
+    if (body.project_context_globs !== undefined) {
+      const problem = validateGlobs(body.project_context_globs);
+      if (problem) throw new AppError(INVALID_PROJECT_CONTEXT_GLOBS, problem, 400);
+    }
     for (const [key, value] of Object.entries(body)) {
       await container.db
         .insert(t.settings)

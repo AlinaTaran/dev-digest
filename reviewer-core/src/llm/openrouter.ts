@@ -8,6 +8,7 @@ import type {
   StructuredResult,
 } from '@devdigest/shared';
 import { toJsonSchema, parseWithRepair } from './structured.js';
+import { withTransportRetry, type TransportRetryOptions } from './transient.js';
 
 /**
  * The single OpenAI-compatible structured provider, owned by the engine because
@@ -32,6 +33,12 @@ export interface OpenRouterProviderOptions {
   /** Per-request timeout (ms) — the SDK retries on timeout/5xx/429 with backoff. */
   timeoutMs?: number;
   maxRetries?: number;
+  /**
+   * Retries for transient transport/body-read failures (ECONNRESET etc.) that the
+   * SDK's own `maxRetries` cannot cover. Defaults to 2 retries with backoff;
+   * `sleep`/`random` are injectable for tests.
+   */
+  transportRetry?: TransportRetryOptions;
   /** Injected cost estimator; returns USD or null when the model is unknown. */
   estimateCost?: (model: string, tokensIn: number, tokensOut: number) => number | null;
 }
@@ -42,12 +49,14 @@ export class OpenRouterProvider implements LLMProvider {
   private baseURL: string;
   private apiKey: string;
   private estimateCost?: OpenRouterProviderOptions['estimateCost'];
+  private transportRetry?: TransportRetryOptions;
 
   constructor(apiKey: string, opts: OpenRouterProviderOptions = {}) {
     this.id = opts.id ?? 'openrouter';
     this.apiKey = apiKey;
     this.baseURL = opts.baseURL ?? 'https://openrouter.ai/api/v1';
     this.estimateCost = opts.estimateCost;
+    this.transportRetry = opts.transportRetry;
     this.client = new OpenAI({
       apiKey,
       baseURL: this.baseURL,
@@ -64,9 +73,14 @@ export class OpenRouterProvider implements LLMProvider {
     let tokensOut = 0;
     let costFromApi: number | null = null;
     let lastRaw = '';
+    // Per-request deadline: one signal covers every SDK retry and repair attempt, so the
+    // caller's budget is a hard cap. Absent `timeoutMs`, the client-level defaults apply.
+    const requestOptions: OpenAI.RequestOptions | undefined = req.timeoutMs
+      ? { timeout: req.timeoutMs, signal: AbortSignal.timeout(req.timeoutMs) }
+      : undefined;
 
     for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
-      const res = await this.client.chat.completions.create({
+      const params: OpenAI.Chat.ChatCompletionCreateParamsNonStreaming = {
         model: req.model,
         messages,
         temperature: req.temperature ?? 0,
@@ -81,7 +95,13 @@ export class OpenRouterProvider implements LLMProvider {
         // OpenRouter usage accounting — ask it to return the REAL generation
         // cost (USD) in `usage.cost`, instead of estimating from a price book.
         ...(this.id === 'openrouter' ? { usage: { include: true } } : {}),
-      });
+      };
+      // Transport retry is separate from the parse-repair loop: a failed
+      // transport attempt consumed no tokens, so it never touches `attempt`.
+      const res = await withTransportRetry(
+        () => this.client.chat.completions.create(params, requestOptions),
+        this.transportRetry,
+      );
 
       // OpenRouter can return HTTP 200 with no `choices` (an upstream provider
       // error / moderation / free-tier limit in the body) — surface it.

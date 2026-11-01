@@ -35,3 +35,13 @@ export function githubBlobUrl(
   }
   return url;
 }
+
+/**
+ * https://github.com/{owner}/{repo}/tree/{sha}/{dir}
+ * A trailing "/" on `dir` is ignored; an empty `dir` links to the tree root.
+ */
+export function githubTreeUrl(repoFullName: string, sha: string, dir: string): string {
+  const clean = dir.replace(/\/+$/, "");
+  const base = `${HOST}/${repoFullName}/tree/${sha}`;
+  return clean === "" ? base : `${base}/${encPath(clean)}`;
+}

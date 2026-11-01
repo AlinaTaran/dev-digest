@@ -7,6 +7,7 @@ import type {
   Embedder,
   LLMProvider,
   WebFetchClient,
+  RepoDocsStore,
 } from '@devdigest/shared';
 import type { AppConfig } from './config.js';
 import type { Db } from '../db/client.js';
@@ -21,6 +22,7 @@ import { OpenAIProvider } from '../adapters/llm/openai.js';
 import { AnthropicProvider } from '../adapters/llm/anthropic.js';
 import { OpenAIEmbedder } from '../adapters/embedder/openai.js';
 import { HttpWebFetchClient } from '../adapters/http/web-fetch.js';
+import { FsRepoDocsStore } from '../adapters/fs/repo-docs.js';
 import { OpenRouterProvider } from '@devdigest/reviewer-core';
 import { estimateCost } from '../adapters/llm/pricing.js';
 import { PriceBook } from './price-book.js';
@@ -55,6 +57,8 @@ export interface ContainerOverrides {
   tokenizer?: Tokenizer;
   /** Intent Layer's SSRF-guarded external plan/spec URL fetcher. */
   webFetch?: WebFetchClient;
+  /** Project Context's realpath-confined clone-docs reader/writer. */
+  repoDocs?: RepoDocsStore;
 }
 
 export class Container {
@@ -81,6 +85,7 @@ export class Container {
   private _tokenizer?: Tokenizer;
   private _priceBook?: PriceBook;
   private _webFetch?: WebFetchClient;
+  private _repoDocs?: RepoDocsStore;
 
   constructor(config: AppConfig, db: Db, private overrides: ContainerOverrides = {}) {
     this.config = config;
@@ -110,6 +115,11 @@ export class Container {
     return this.overrides.webFetch ?? (this._webFetch ??= new HttpWebFetchClient({
       enabled: this.config.externalFetchEnabled,
     }));
+  }
+
+  /** Confined fs access to a clone's Markdown docs (Project Context). */
+  get repoDocs(): RepoDocsStore {
+    return this.overrides.repoDocs ?? (this._repoDocs ??= new FsRepoDocsStore(this.config.cloneDir));
   }
 
   get codeIndex(): CodeIndex {

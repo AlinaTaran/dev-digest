@@ -15,10 +15,14 @@ const RepoCtx = React.createContext<{
   reposLoaded: boolean;
 }>({ repoId: null, setRepoId: () => {}, repos: [], activeRepo: null, reposLoaded: false });
 
-function repoIdFromPath(pathname: string | null): string | null {
+const RESERVED_REPO_SEGMENTS = new Set(["new"]);
+
+export function repoIdFromPath(pathname: string | null): string | null {
   if (!pathname) return null;
   const m = pathname.match(/^\/repos\/([^/]+)/);
-  return m ? decodeURIComponent(m[1]!) : null;
+  if (!m) return null;
+  const id = decodeURIComponent(m[1]!);
+  return RESERVED_REPO_SEGMENTS.has(id) ? null : id;
 }
 
 export function RepoProvider({ children }: { children: React.ReactNode }) {

@@ -49,7 +49,23 @@ const EnvSchema = z.object({
   // (e.g. an `undici` dispatcher with a custom `connect.lookup`), which this
   // codebase doesn't depend on. Set EXTERNAL_FETCH_ENABLED=true to opt in.
   EXTERNAL_FETCH_ENABLED: z.string().optional(),
+  // Onboarding Tour generation deadline (ms). '' → default, as for LOG_LEVEL.
+  ONBOARDING_TIMEOUT_MS: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z.coerce.number().int().positive().optional(),
+  ),
+  // PR Brief response deadline (ms). '' → default, as for ONBOARDING_TIMEOUT_MS.
+  BRIEF_TIMEOUT_MS: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z.coerce.number().int().positive().optional(),
+  ),
 });
+
+/**
+ * JobRunner's hard per-job timeout is 120 000 ms. The onboarding deadline must
+ * fire first so a real timeout is recorded as `timeout`, so it is clamped below it.
+ */
+export const ONBOARDING_TIMEOUT_CEILING_MS = 110_000;
 
 export type AppConfig = {
   databaseUrl: string;
@@ -83,6 +99,17 @@ export type AppConfig = {
    * EXTERNAL_FETCH_ENABLED=true to opt in with that residual risk understood.
    */
   externalFetchEnabled: boolean;
+  /**
+   * Deadline for one Onboarding Tour generation job (ms). On expiry the job
+   * records `failed/timeout`. Default 100 000; env ONBOARDING_TIMEOUT_MS, clamped to ONBOARDING_TIMEOUT_CEILING_MS.
+   */
+  onboardingTimeoutMs: number;
+  /**
+   * Deadline for answering one PR Brief generation request (ms). Default 60 000; env BRIEF_TIMEOUT_MS.
+   * It bounds the HTTP **response**, not the provider call: provider calls cannot be aborted, so an
+   * abandoned call keeps running until it settles (its result is then discarded, never saved).
+   */
+  briefTimeoutMs: number;
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -102,5 +129,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     embeddingsEnabled: parsed.EMBEDDINGS_ENABLED === 'true',
     repoIntelEnabled: parsed.REPO_INTEL_ENABLED !== 'false',
     externalFetchEnabled: parsed.EXTERNAL_FETCH_ENABLED === 'true',
+    onboardingTimeoutMs: Math.min(parsed.ONBOARDING_TIMEOUT_MS ?? 100_000, ONBOARDING_TIMEOUT_CEILING_MS),
+    briefTimeoutMs: parsed.BRIEF_TIMEOUT_MS ?? 60_000,
   };
 }

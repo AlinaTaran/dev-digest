@@ -38,7 +38,8 @@ skill; e2e rules live in `e2e/CLAUDE.md`.
 
 ## Step 1 — Read your task and its context (fresh context)
 
-- Read your assigned task from `docs/spec/<slug>.md`: its **Type**, **Owned paths**,
+- Read your assigned task from the implementation plan `docs/plans/<slug>.md` (written by
+  `implementation-planner`; older plans may still live at `docs/spec/<slug>.md`): its **Type**, **Owned paths**,
   **Depends-on**, **Skills**, **relevant insights**, **Test + typecheck** command, and **Acceptance**.
 - Note the **other tasks' Owned paths** so you stay clear of them.
 - `Read <module>/INSIGHTS.md` for the module you're working in (`client/`, `server/`,
@@ -82,13 +83,29 @@ By task **Type**, let these govern your code:
 
 Your job is to **write the code and confirm the module's tests pass.** Do **not** audit the
 style, architecture, security posture, or design of neighboring code — that belongs to
-`pr-self-review`. Run the module's **complete** relevant suite **and** typecheck to green
-(never stop at the first passing test):
+`pr-self-review`.
 
-- **backend** → `cd server && pnpm exec vitest run --exclude '**/*.it.test.ts'` + `pnpm typecheck`
-- **ui** → `cd client && pnpm test` + `pnpm typecheck`
-- **core** → `cd reviewer-core && npm test` + `npm run typecheck`
-- **mcp-server** → `cd mcp-server && npm test` + `npm run typecheck` + `npm run lint:arch`
+**Targeted by default (token budget).** Other implementers may be editing the same tree in
+parallel, so the full suite and a whole-project typecheck can go red because of *their*
+half-written files — never chase failures outside your Owned paths. Run only the tests related
+to the files you changed, terse output, stop at the first failure:
+
+- **backend** → `cd server && pnpm exec vitest related <your files> --run --reporter=dot --bail=1 --exclude '**/*.it.test.ts'`
+  (the `--exclude` is mandatory — `related` otherwise pulls in Docker-backed `*.it.test.ts`)
+- **ui** → `cd client && DEBUG_PRINT_LIMIT=2000 pnpm exec vitest related <your files> --run --reporter=dot --bail=1`
+- **core** → `cd reviewer-core && npx vitest related <your files> --run --reporter=dot --bail=1`
+- **mcp-server** → `cd mcp-server && npx vitest related <your files> --run --reporter=dot --bail=1` + `npm run lint:arch`
+
+Typecheck filtered to your paths: `pnpm typecheck 2>&1 | grep -E '<your owned paths>' | head -30`
+(`npm run typecheck` for core / mcp-server). Zero matching lines = your files are clean.
+
+"No test files found" means no test imports your files — that is **not** green: run the
+test file covering the nearest importer, or say so in your output.
+
+**Full suite only on request.** Run the module's complete suite
+(`vitest run --reporter=dot`, server with `--exclude '**/*.it.test.ts'`) + full typecheck only
+when your task or the caller explicitly asks (e.g. single-agent mode). Otherwise the
+full-suite check is done downstream (in `/run-plan`, by `plan-verifier`'s re-run).
 
 Write **new** tests only when your task's **Acceptance** explicitly asks for them; otherwise it
 is enough that the existing tests stay green. If a task genuinely needs integration tests

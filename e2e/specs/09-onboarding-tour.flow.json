@@ -1,0 +1,20 @@
+{
+  "name": "Onboarding Tour page: nav entry, seeded tour, not-cloned state, TOC deep link",
+  "description": "From the seeded repo, open the sidebar 'Onboarding Tour' item, confirm the heading and breadcrumb, the not-cloned reason (the seeded repo has no clone, so Regenerate is disabled), the seeded critical-paths content, a TOC anchor navigation, and that the hash survives a reload. Read-only seeded data; needs a freshly seeded DB. Waits avoid CSS-uppercased text (the TOC label).",
+  "steps": [
+    {"cmd": ["open", "{BASE}/"], "label": "load the app root"},
+    {"cmd": ["wait", "--url", "/pulls"], "label": "land on the PR list"},
+    {"cmd": ["find", "text", "Onboarding Tour", "click"], "label": "click the sidebar Onboarding Tour item"},
+    {"cmd": ["wait", "--url", "/onboarding"], "label": "navigate to the onboarding tour route"},
+    {"cmd": ["wait", "--load", "networkidle"], "label": "tour fetch settles"},
+    {"cmd": ["wait", "--text", "Onboarding for payments-api"], "label": "page heading renders"},
+    {"cmd": ["wait", "--text", "acme/payments-api"], "label": "repo name is visible in the breadcrumb"},
+    {"cmd": ["wait", "--text", "repo is not cloned yet"], "label": "not-cloned reason renders (seeded repo has no clone)"},
+    {"cmd": ["wait", "--text", "Authenticates every request before it reaches a handler"], "label": "seeded critical-path row renders"},
+    {"cmd": ["find", "first", "nav a[href=\"#critical-paths\"]", "click"], "label": "click the Critical paths TOC entry"},
+    {"cmd": ["wait", "--url", "#critical-paths"], "label": "TOC click puts the section anchor in the URL"},
+    {"cmd": ["reload"], "label": "reload with the hash"},
+    {"cmd": ["wait", "--url", "#critical-paths"], "label": "hash survives the reload"},
+    {"cmd": ["wait", "--text", "Authenticates every request before it reaches a handler"], "label": "critical-path row renders again after the reload"}
+  ]
+}

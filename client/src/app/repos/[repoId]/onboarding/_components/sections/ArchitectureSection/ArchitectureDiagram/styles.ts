@@ -1,0 +1,37 @@
+import type React from "react";
+
+export const s: Record<string, React.CSSProperties> = {
+  figure: { margin: 0, display: "flex", flexDirection: "column", gap: 10 },
+  scroll: { overflowX: "auto", paddingBottom: 4 },
+  canvas: { position: "relative", transformOrigin: "0 0" },
+  svg: { position: "absolute", inset: 0 },
+  labels: { position: "absolute", inset: 0, pointerEvents: "none" },
+  label: { pointerEvents: "auto" },
+  node: {
+    position: "absolute",
+    boxSizing: "border-box",
+    display: "flex",
+    alignItems: "center",
+    padding: "0 10px",
+    borderRadius: 6,
+    border: "1px solid var(--border)",
+    background: "var(--bg-elevated)",
+    color: "var(--text-primary)",
+    overflow: "hidden",
+  },
+  nodeLink: { textDecoration: "none" },
+  nodeLabel: {
+    fontSize: 12.5,
+    fontWeight: 600,
+    lineHeight: 1.25,
+    overflow: "hidden",
+    display: "-webkit-box",
+    WebkitLineClamp: 2,
+    WebkitBoxOrient: "vertical",
+    wordBreak: "break-word",
+  },
+  legend: { display: "flex", flexWrap: "wrap", alignItems: "center", gap: 14, fontSize: 12, color: "var(--text-secondary)" },
+  legendTitle: { fontWeight: 600, color: "var(--text-muted)" },
+  legendItem: { display: "inline-flex", alignItems: "center", gap: 6 },
+  swatch: { width: 10, height: 10, borderRadius: 2 },
+};

@@ -1,7 +1,9 @@
 import 'dotenv/config';
 import { createDb, type Db } from './client.js';
 import * as t from './schema.js';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, isNull, sql } from 'drizzle-orm';
+import { SEED_ONBOARDING_TOUR } from './seed-onboarding.js';
+import { SEED_CONFIG_PATCH, SEED_PR_BRIEF } from './seed-brief.js';
 import {
   GENERAL_REVIEWER_PROMPT,
   SECURITY_REVIEWER_PROMPT,
@@ -99,6 +101,16 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
   }
   const repoId = repo!.id;
 
+  // ---- Onboarding Tour (fixed fixture; the demo repo has no clone) ----
+  await db
+    .insert(t.onboarding)
+    .values({
+      repoId,
+      json: SEED_ONBOARDING_TOUR,
+      generatedAt: new Date(SEED_ONBOARDING_TOUR.generated_at),
+    })
+    .onConflictDoNothing({ target: t.onboarding.repoId });
+
   // ---- PR #482 (rate limiting) ----
   let [pr] = await db
     .select()
@@ -128,7 +140,7 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
     await db.insert(t.prFiles).values([
       { prId: pr!.id, path: 'src/middleware/ratelimit.ts', additions: 84, deletions: 0 },
       { prId: pr!.id, path: 'src/api/public/webhooks.ts', additions: 31, deletions: 6 },
-      { prId: pr!.id, path: 'src/config.ts', additions: 4, deletions: 0 },
+      { prId: pr!.id, path: 'src/config.ts', additions: 4, deletions: 0, patch: SEED_CONFIG_PATCH },
       { prId: pr!.id, path: 'src/api/users.ts', additions: 7, deletions: 2 },
     ]);
 
@@ -182,6 +194,23 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
       },
     ]);
   }
+
+  // ---- PR Brief for PR #482 (outside the `!pr` block so already-seeded dev DBs get it too) ----
+  // `src/config.ts` is the only file with a patch; backfill it for rows seeded before the brief existed.
+  await db
+    .update(t.prFiles)
+    .set({ patch: SEED_CONFIG_PATCH })
+    .where(and(eq(t.prFiles.prId, pr!.id), eq(t.prFiles.path, 'src/config.ts'), isNull(t.prFiles.patch)));
+  // A legacy `{ risks: [...] }` row (old intent flow) has no `meta` and reads as "no brief": replace it,
+  // but never overwrite a real (user-generated) brief.
+  await db
+    .insert(t.prBrief)
+    .values({ prId: pr!.id, json: SEED_PR_BRIEF })
+    .onConflictDoUpdate({
+      target: t.prBrief.prId,
+      set: { json: SEED_PR_BRIEF },
+      setWhere: sql`NOT (${t.prBrief.json} ? 'meta')`,
+    });
 
   // ---- built-in agents (the three starter presets) ----
   // Prompt bodies live in ./seed-prompts.ts (mirrored in docs/agent-prompts/*.md).

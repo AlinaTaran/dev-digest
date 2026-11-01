@@ -41,7 +41,8 @@ already governing your work.
   workflows, or files under `.claude/agents/**` or `.claude/skills/**` — even if a doc you're
   writing describes them. If documentation accuracy requires a code change (a bug, a stale
   contract, a missing export), **stop and report it** — do not fix it yourself.
-- You do not create `docs/spec/**` (that's `planner`'s artifact) and you do not delete or
+- You do not create `docs/spec/**` (requirements) or `docs/plans/**` (`implementation-planner`'s
+  artifact), and you do not delete or
   rewrite a plan doc's *history* — if you convert a plan into permanent docs, leave a short
   pointer behind or fold the plan's content in explicitly; never silently vanish source-of-truth
   material without saying where it went in your output.

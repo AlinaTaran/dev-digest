@@ -35,8 +35,27 @@ or a trap someone hit — so the next person (or agent) doesn't relearn it.
   `</untrusted>` in the payload to `<\/untrusted>` so author/repo text can't close our
   delimiter and break out into instructions. Never string-concat raw external content into
   the prompt; add a new `wrapUntrusted('label', …)` section in `assemblePrompt` instead.
+- **2026-10-25 — the OpenRouter provider has NO per-request timeout.** `openrouter.ts` sets
+  only the client-level `timeout: opts.timeoutMs ?? 90_000` at construction (the SDK also
+  retries on timeout/5xx/429); a per-call `timeoutMs` on the request is ignored. And the
+  server's `withTimeout` only rejects the outer promise — it never aborts the HTTP call. So
+  a caller-side 60 s timeout leaves the model call running: any single-flight/"exactly one
+  LLM call" guard must stay held until the INNER call settles, not until the timeout fires,
+  or a retry starts a second paid call (found by cross-model review of the PR Brief plan).
+- **2026-10-25 (later) — supersedes the entry above: OpenRouter now DOES honour per-request
+  `timeoutMs`.** `openrouter.ts` passes `{ timeout, signal: AbortSignal.timeout(timeoutMs) }`
+  as SDK request options when `req.timeoutMs` is set (unchanged when absent). The SDK
+  `timeout` is per attempt, so the shared `signal` is what caps retries + the repair loop.
+  Callers that pass `timeoutMs` (brief service, onboarding `job.ts`) are now really bounded.
+  Caveat: an abort surfaces as `APIUserAbortError`/`APIConnectionTimeoutError`, not
+  `TimeoutError` — classify errors after the deadline as timeouts, or the caller may report
+  `llm_failed` on a millisecond race. Single-flight guards should still be held until the
+  inner call settles.
 
 ## Recurring Errors & Fixes
+
+- **2026-10-25 — "Invalid response body while trying to fetch https://openrouter.ai/api/v1/chat/completions: read ECONNRESET" fails the run with NO retry.** OpenRouter returned `200` headers, then the TCP connection reset while the body was being read (OpenRouter holds the response open while the upstream model works; an upstream drop kills it mid-body). The `openai` SDK (4.104) only retries inside `makeRequest` — connection failure before headers, 429, 5xx (`node_modules/openai/core.js` ~327–339); the body is parsed later in `defaultParseResponse` (`core.js` ~49), outside the retry loop, so `maxRetries` in `llm/openrouter.ts` doesn't help. The server's `withRetry` (which does treat `ECONNRESET` as retryable) wraps only the server-side OpenAI/Anthropic adapters, not `OpenRouterProvider`. Seen since 2026-06-30, mostly on big single-pass prompts (100 changed files). Fix (not yet applied): retry body-read `FetchError`s (`code: 'ECONNRESET'` / `type: 'system'`) around `chat.completions.create` in `completeStructured`.
+- **2026-10-25 — fix applied for the ECONNRESET body-read failure above.** `src/llm/transient.ts` adds `isTransientTransportError` (code/`cause.code` in ECONNRESET/ETIMEDOUT/EPIPE/ECONNREFUSED/UND_ERR_SOCKET, `FetchError` type `system`, or message `Invalid response body…`/`terminated`/`socket hang up`; never 4xx `status` or `AbortError`) and `withTransportRetry` (exponential backoff + equal jitter, default 2 retries, injectable `sleep`/`random`). `OpenRouterProvider` wraps only the `chat.completions.create` call with it (configurable via `OpenRouterProviderOptions.transportRetry`), INSIDE the parse-repair `attempt` loop, so a failed transport try consumes no tokens and never bumps `attempts`. Gotcha: hoisting the request into a const widens it to the streaming overload — type it `OpenAI.Chat.ChatCompletionCreateParamsNonStreaming` or `res.usage` stops typechecking. Tests: `test/transient.test.ts`.
 
 ## Session Notes
 

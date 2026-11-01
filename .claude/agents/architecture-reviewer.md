@@ -8,7 +8,7 @@ description: >-
   module", "check for onion boundary violations in this diff", "is this new adapter
   wired correctly through the DI container?", "audit the client's feature folder
   structure for coupling".
-model: opus
+model: sonnet
 color: red
 tools: Glob, Grep, Read, LS, NotebookRead, Bash, Skill, Agent
 skills:

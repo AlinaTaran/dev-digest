@@ -5,12 +5,12 @@ import { IdParams } from '../_shared/schemas.js';
 import { IntentService } from './service.js';
 
 /**
- * Intent module — a cheap, per-workspace, cached PR-intent + risk classifier.
+ * Intent module — a cheap, per-workspace, cached PR-intent classifier.
  * Both endpoints return a `PrIntentBrief` (`{ pr_id, intent, in_scope,
- * out_of_scope, risks }`) — risks are surfaced only on the INTENT card, never
- * injected into a review agent's prompt (see `IntentService.computeForRun`).
- *   GET  /pulls/:id/intent            → lazy: cache hit is instant; miss computes (2 LLM calls, parallel) + caches
- *   POST /pulls/:id/intent/recompute  → always recomputes, overwriting the cached `pr_intent` + `pr_brief` rows
+ * out_of_scope, risks }`); `risks` is always `[]` (kept for contract
+ * compatibility; risks now live in the PR Brief).
+ *   GET  /pulls/:id/intent            → lazy: cache hit is instant; miss computes (1 LLM call) + caches
+ *   POST /pulls/:id/intent/recompute  → always recomputes, overwriting the cached `pr_intent` row (no `pr_brief` access)
  */
 export default async function intentRoutes(appBase: FastifyInstance) {
   const app = appBase.withTypeProvider<ZodTypeProvider>();

@@ -9,13 +9,26 @@ import {
   SmartDiff,
   Conformance,
   Onboarding,
+  OnboardingGenerateResponse,
+  OnboardingTourResponse,
   EvalRun,
   MemoryItem,
   RunTrace,
+  ContextListing,
+  ContextAttachBody,
+  AgentContextResponse,
+  SkillContextResponse,
+  SettingsKnown,
   Settings,
   Repo,
   PrDetail,
   PrMeta,
+  PrBrief,
+  PrBriefResponse,
+  BriefModelOutput,
+  BriefModelOutputCountsOnly,
+  BriefBlastReason,
+  BlastDegradedReason,
 } from '@devdigest/shared';
 
 /**
@@ -128,11 +141,6 @@ describe('AI contracts parse fixtures', () => {
       }),
     ).not.toThrow();
     expect(() =>
-      Onboarding.parse({
-        sections: [{ kind: 'architecture', title: 'T', body: 'b', links: [] }],
-      }),
-    ).not.toThrow();
-    expect(() =>
       EvalRun.parse({
         recall: 0.82,
         precision: 0.91,
@@ -167,6 +175,72 @@ describe('AI contracts parse fixtures', () => {
       log: [{ t: '00.00', kind: 'info', msg: 'started' }],
     });
     expect(trace.tool_calls).toHaveLength(1);
+    // Old traces predate project context: the new fields are absent, not required.
+    expect(trace.specs_missing).toBeUndefined();
+    expect(trace.specs_tokens).toBeUndefined();
+  });
+
+  it('RunTrace accepts specs_missing + specs_tokens', () => {
+    const trace = RunTrace.parse({
+      config: { agent: 'A', model: 'm' },
+      stats: { duration_ms: 1, tokens_in: 1, tokens_out: 1, findings: 0, grounding: '0/0', cost_usd: null },
+      prompt_assembly: { system: 's', user: 'u' },
+      tool_calls: [],
+      raw_output: '{}',
+      memory_pulled: [],
+      specs_read: ['specs/a.md'],
+      specs_missing: ['specs/gone.md'],
+      specs_tokens: [{ path: 'specs/a.md', tokens: 12 }],
+      log: [],
+    });
+    expect(trace.specs_tokens?.[0]?.tokens).toBe(12);
+    expect(trace.specs_missing).toEqual(['specs/gone.md']);
+  });
+});
+
+describe('project context contracts', () => {
+  const uuid = '3f2b8c1e-6a4d-4e0a-9b1c-2d3e4f5a6b7c';
+
+  it('ContextListing + attach body + responses parse fixtures', () => {
+    const listing = ContextListing.parse({
+      repo_id: uuid,
+      globs: ['**/{specs,docs,insights}/**/*.md'],
+      scanned_at: '2026-10-21T10:00:00.000Z',
+      clone_sha: null,
+      degraded: false,
+      reason: null,
+      truncated: false,
+      total_found: 1,
+      docs: [
+        { path: 'specs/a.md', name: 'a.md', dir: 'specs', type: 'specs', size_bytes: 10, tokens: 3, too_large: false, used_by_agents: 2 },
+      ],
+    });
+    expect(listing.docs[0]?.updated_at).toBeUndefined();
+    expect(ContextAttachBody.parse({ repo_id: uuid, paths: ['specs/a.md'] }).paths).toHaveLength(1);
+    expect(() => ContextAttachBody.parse({ repo_id: 'nope', paths: [] })).toThrow();
+
+    const attached = [{ path: 'specs/a.md', position: 0, missing: false, tokens: 3 }];
+    expect(
+      AgentContextResponse.parse({
+        repo_id: uuid,
+        attached,
+        inherited: [{ path: 'docs/b.md', skill_id: uuid, skill_name: 'S', missing: false, tokens: 5, duplicate_of_attached: false }],
+        effective: [
+          { path: 'specs/a.md', source: 'agent', missing: false, tokens: 3 },
+          { path: 'docs/b.md', source: { skill_id: uuid, skill_name: 'S' }, missing: false, tokens: 5 },
+        ],
+        total_tokens: 8,
+      }).effective,
+    ).toHaveLength(2);
+    expect(
+      SkillContextResponse.parse({ repo_id: uuid, attached, total_tokens: 3, serialized: '## Project context\n- specs/a.md' })
+        .serialized,
+    ).toContain('- specs/a.md');
+  });
+
+  it('SettingsKnown.project_context_globs is optional', () => {
+    expect(SettingsKnown.parse({}).project_context_globs).toBeUndefined();
+    expect(SettingsKnown.parse({ project_context_globs: ['docs/**/*.md'] }).project_context_globs).toEqual(['docs/**/*.md']);
   });
 });
 
@@ -239,5 +313,210 @@ describe('platform DTOs', () => {
       ],
     });
     expect(pr.latest_findings).toHaveLength(1);
+  });
+});
+
+describe('Onboarding contract', () => {
+  const node = (i: number) => ({ id: `n${i}`, label: `Node ${i}`, kind: 'module', path: null });
+  const tour = () => ({
+    generated_at: '2026-10-25T10:00:00.000Z',
+    source_sha: 'abc1234',
+    files_indexed: 42,
+    index_status: 'full',
+    degraded: false,
+    reasons: [],
+    model: { provider: 'openai', model: 'gpt-x' },
+    dropped_refs: 0,
+    sections: [
+      {
+        kind: 'architecture',
+        empty_reason: null,
+        summary_md: 'Layered API.',
+        top_dirs: [{ path: 'src', files: 40 }],
+        diagram: { nodes: [node(1), node(2)], edges: [{ from: 'n1', to: 'n2', label: null }] },
+      },
+      {
+        kind: 'critical_paths',
+        empty_reason: null,
+        items: [{ path: 'src/a.ts', why: null, fan_in: 3 }],
+      },
+      {
+        kind: 'run_locally',
+        empty_reason: null,
+        steps: [{ command: 'pnpm install', source_path: 'package.json', note: null }],
+      },
+      { kind: 'reading_path', empty_reason: null, steps: [{ path: 'src/a.ts', why: 'entry' }] },
+      {
+        kind: 'first_tasks',
+        empty_reason: null,
+        tasks: [{ title: 'Add test', path: 'src/a.ts', path_kind: 'file', complexity: 'low' }],
+      },
+    ],
+  });
+  type Tour = ReturnType<typeof tour>;
+  const mutate = (fn: (t: Tour) => void) => {
+    const t = tour();
+    fn(t);
+    return t;
+  };
+  // Sections are a heterogeneous tuple; tests poke at fields loosely.
+  const sec = (t: Tour, i: number) => t.sections[i] as Record<string, any>;
+
+  it('accepts a valid five-section tour and the API envelopes', () => {
+    expect(() => Onboarding.parse(tour())).not.toThrow();
+    const generation = {
+      id: 'g1',
+      status: 'generating',
+      started_at: '2026-10-25T10:00:00.000Z',
+      finished_at: null,
+      error_reason: null,
+    };
+    expect(() => OnboardingGenerateResponse.parse({ generation })).not.toThrow();
+    expect(() =>
+      OnboardingTourResponse.parse({
+        repo_id: 'r1',
+        tour: null,
+        generation,
+        availability: { can_generate: false, reason: 'not_cloned' },
+        stale: false,
+        current_index_sha: null,
+      }),
+    ).not.toThrow();
+  });
+
+  it('rejects wrong section count, order, and the legacy shape', () => {
+    expect(Onboarding.safeParse(mutate((t) => t.sections.pop())).success).toBe(false);
+    expect(
+      Onboarding.safeParse(
+        mutate((t) => {
+          [t.sections[0], t.sections[1]] = [t.sections[1]!, t.sections[0]!];
+        }),
+      ).success,
+    ).toBe(false);
+    expect(
+      Onboarding.safeParse({
+        sections: [{ kind: 'architecture', title: 'T', body: 'b', links: [] }],
+      }).success,
+    ).toBe(false);
+  });
+
+  it('enforces caps at the contract level', () => {
+    expect(
+      Onboarding.safeParse(mutate((t) => (sec(t, 0).summary_md = 'x'.repeat(1201)))).success,
+    ).toBe(false);
+    expect(
+      Onboarding.safeParse(
+        mutate((t) => {
+          sec(t, 0).diagram.nodes = Array.from({ length: 13 }, (_, i) => node(i));
+        }),
+      ).success,
+    ).toBe(false);
+    expect(
+      Onboarding.safeParse(mutate((t) => (sec(t, 4).tasks[0].complexity = 'high'))).success,
+    ).toBe(false);
+    expect(
+      Onboarding.safeParse(mutate((t) => (sec(t, 2).steps[0].command = 'x'.repeat(301)))).success,
+    ).toBe(false);
+    expect(
+      Onboarding.safeParse(mutate((t) => (sec(t, 3).steps[0].why = 'x'.repeat(121)))).success,
+    ).toBe(false);
+  });
+});
+
+describe('PrBrief contract', () => {
+  const risk = (refs: string[] = ['a.ts']) => ({
+    kind: 'security',
+    title: 'Title',
+    explanation: 'Because.',
+    severity: 'high' as const,
+    file_refs: refs,
+  });
+  const validBrief = () => ({
+    summary: 'Adds a thing.',
+    risks: { risks: [risk()] },
+    review_focus: [{ file: 'a.ts', line: 3, reason: 'Check this', line_adjusted: false }],
+    intent: { intent: 'x', in_scope: [], out_of_scope: [] },
+    blast: { changed_symbols: [], downstream: [], summary: '' },
+    history: { history: [] },
+    meta: {
+      head_sha: 'abc',
+      generated_at: '2026-10-25T00:00:00Z',
+      model: { provider: 'openrouter', model: 'm' },
+      missing_inputs: [],
+      blast_reason: null,
+      input_truncated: [],
+      input_tokens_est: 10,
+      specs_used: [],
+      specs_skipped: [],
+      tokens_in: 1,
+      tokens_out: 1,
+      cost_usd: null,
+      dropped_refs: 0,
+      adjusted_lines: 0,
+    },
+  });
+  const mutate = (fn: (b: ReturnType<typeof validBrief>) => void) => {
+    const b = validBrief();
+    fn(b);
+    return PrBrief.safeParse(b).success;
+  };
+
+  it('parses valid, null-block and rejects legacy shapes', () => {
+    expect(PrBrief.safeParse(validBrief()).success).toBe(true);
+    expect(
+      mutate((b) => {
+        (b as any).intent = null;
+        (b as any).blast = null;
+        (b as any).history = null;
+      }),
+    ).toBe(true);
+    expect(PrBrief.safeParse({ risks: [] }).success).toBe(false);
+  });
+
+  it('enforces caps', () => {
+    expect(mutate((b) => (b.summary = 'x'.repeat(601)))).toBe(false);
+    expect(mutate((b) => (b.risks.risks = Array.from({ length: 7 }, () => risk())))).toBe(false);
+    expect(
+      mutate((b) => (b.review_focus = Array.from({ length: 9 }, () => ({ ...b.review_focus[0]! })))),
+    ).toBe(false);
+    expect(mutate((b) => (b.review_focus[0]!.line = 0))).toBe(false);
+    expect(mutate((b) => (b.risks.risks = [risk([])]))).toBe(false);
+    expect(mutate((b) => (b.risks.risks = [risk(['a', 'b', 'c', 'd'])]))).toBe(false);
+    expect(mutate((b) => (b.review_focus[0]!.reason = 'x'.repeat(161)))).toBe(false);
+  });
+
+  it('model output schemas', () => {
+    const focus = { file: 'a.ts', line: 1, reason: 'r' };
+    const base = { summary: 's', risks: [risk()], review_focus: [focus] };
+    expect(BriefModelOutput.safeParse(base).success).toBe(true);
+    expect(BriefModelOutput.safeParse({ ...base, summary: 'x'.repeat(601) }).success).toBe(false);
+    expect(
+      BriefModelOutput.safeParse({ ...base, review_focus: Array.from({ length: 13 }, () => focus) }).success,
+    ).toBe(false);
+    expect(
+      BriefModelOutput.safeParse({ ...base, risks: Array.from({ length: 11 }, () => risk()) }).success,
+    ).toBe(false);
+    expect(
+      BriefModelOutput.safeParse({ ...base, risks: [risk(['1', '2', '3', '4', '5'])] }).success,
+    ).toBe(true);
+
+    expect(BriefModelOutputCountsOnly.safeParse({ ...base, summary: 'x'.repeat(601) }).success).toBe(true);
+    expect(
+      BriefModelOutputCountsOnly.safeParse({ ...base, review_focus: Array.from({ length: 13 }, () => focus) })
+        .success,
+    ).toBe(false);
+    expect(BriefModelOutputCountsOnly.safeParse({ ...base, risks: [risk([])] }).success).toBe(false);
+  });
+
+  it('keeps blast reason enum in parity and PrBriefResponse round-trips', () => {
+    expect(BriefBlastReason.options).toEqual(BlastDegradedReason.options);
+    const r = {
+      pr_id: '00000000-0000-4000-8000-000000000000',
+      brief: null,
+      generating: false,
+      stale: false,
+      current_head_sha: 'abc',
+    };
+    expect(PrBriefResponse.parse(r)).toEqual(r);
   });
 });

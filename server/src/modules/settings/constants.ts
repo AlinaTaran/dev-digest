@@ -11,3 +11,6 @@ export const SECRET_KEY_BY_PROVIDER: Record<ConnTestProvider, SecretKey> = {
   openrouter: 'OPENROUTER_API_KEY',
   github: 'GITHUB_TOKEN',
 };
+
+/** Error code for a rejected `project_context_globs` update (AC-13). */
+export const INVALID_PROJECT_CONTEXT_GLOBS = 'invalid_project_context_globs';

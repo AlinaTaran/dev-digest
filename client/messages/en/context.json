@@ -1,24 +1,102 @@
 {
   "title": "Project Context",
-  "chunks": "{count} chunks",
-  "reindex": "Re-index",
-  "indexing": "Indexing…",
-  "resync": "Resync",
-  "resyncing": "Resyncing…",
-  "indexStatus": "Index status: {status}",
-  "loadError": "Couldn’t load specs",
-  "kb": "{kb}kb",
+  "subtitle": "Markdown docs from this repository that you can attach to agents and skills.",
+  "breadcrumb": "Project Context",
+  "globsLine": "Search globs: {globs}",
+  "editGlobs": "Edit globs",
+  "refresh": "Refresh",
+  "refreshing": "Refreshing…",
+  "loadError": "Couldn’t load project context",
+  "retry": "Retry",
+  "list": {
+    "label": "Documents",
+    "footer": "{count} files · scanned {when}",
+    "truncated": "Showing {shown} of {total}",
+    "tokens": "≈ {count} tokens",
+    "tooLarge": "too large",
+    "type": {
+      "specs": "specs",
+      "docs": "docs",
+      "insights": "insights",
+      "other": "other"
+    }
+  },
   "empty": {
-    "title": "No spec files yet",
-    "body": "Drop your PRDs, tech specs, and acceptance criteria under .devdigest/specs/. Every agent and the PR brief read them as grounding context."
+    "notClonedTitle": "Repository isn’t cloned yet",
+    "notClonedBody": "Project context is read from the local clone. Import or refresh the repository so its files are available, then press Refresh.",
+    "scanFailedTitle": "Couldn’t scan the repository",
+    "scanFailedBody": "Scanning the clone failed. Try Refresh again.",
+    "noMatchTitle": "No matching documents",
+    "noMatchBody": "No Markdown files matched the search globs: {globs}.",
+    "noMatchLink": "Change the globs in Settings",
+    "noDoc": "Select a document to preview it."
   },
-  "mode": {
-    "preview": "preview",
-    "edit": "edit"
+  "time": {
+    "justNow": "just now",
+    "minutes": "{n}m ago",
+    "hours": "{n}h ago",
+    "days": "{n}d ago"
   },
-  "editor": {
-    "loadError": "Couldn’t load spec",
+  "doc": {
+    "loadError": "Couldn’t load this document",
+    "usedBy": "Used by {count} agents",
+    "usedByOne": "Used by 1 agent",
+    "viewMode": "View mode",
+    "preview": "Preview",
+    "edit": "Edit",
+    "editorLabel": "Edit document content",
+    "editWarning": "Saving writes directly to the file in your local clone. Nothing is committed or pushed.",
     "save": "Save",
-    "saving": "Saving…"
+    "saving": "Saving…",
+    "discard": "Discard changes",
+    "tokens": "≈ {count} tokens"
+  },
+  "saveError": {
+    "conflict": "File changed on disk — reload to see the latest version.",
+    "reload": "Reload",
+    "tooLarge": "This document is too large to save (limit 256 KB).",
+    "unreadable": "This content can’t be saved (it contains unsupported characters).",
+    "invalid": "This document can’t be edited.",
+    "failed": "Save failed. Your changes are still here — try again."
+  },
+  "unsavedConfirm": "You have unsaved changes. Discard them?",
+  "attach": {
+    "noRepoTitle": "No repository selected",
+    "noRepoBody": "Pick a repository to attach its documents.",
+    "notClonedTitle": "Repository not cloned",
+    "notClonedBody": "Clone the repository to attach its documents.",
+    "loadError": "Could not load project context.",
+    "saveError": "Could not save project context. Please try again.",
+    "loading": "Loading…",
+    "filterPlaceholder": "Filter documents…",
+    "counter": "{attached} of {total} attached",
+    "counterShort": "{attached} attached",
+    "inheritedGroup": "Inherited from skills",
+    "emptyAttached": "No documents attached yet.",
+    "emptyFiltered": "No documents match the filter.",
+    "missing": "missing",
+    "tooLarge": "too large",
+    "duplicate": "also attached",
+    "footerTokens": "≈ {count} tokens",
+    "caption": "Injected as an untrusted block (## Project context) into every run.",
+    "tokens": "≈ {count} tok",
+    "tokensUnknown": "— tok",
+    "viaSkill": "via {skill}",
+    "type": {
+      "specs": "specs",
+      "docs": "docs",
+      "insights": "insights",
+      "other": "other"
+    },
+    "dragHandle": "Reorder {path}",
+    "moveUp": "Move {path} up",
+    "moveDown": "Move {path} down",
+    "remove": "Remove {path}",
+    "preview": "Preview {path}",
+    "previewText": "Preview",
+    "previewLoading": "Loading…",
+    "previewError": "Could not load this document.",
+    "previewTokens": "≈ {count} tokens",
+    "previewUsedBy": "{count, plural, one {Used by # agent} other {Used by # agents}}"
   }
 }

@@ -2,14 +2,14 @@
   "block": {
     "intent": "Intent",
     "blast": "Blast radius",
-    "risks": "Risks",
-    "history": "PR history"
+    "risks": "Risk areas",
+    "history": "PR history",
+    "brief": "PR Brief",
+    "reviewFocus": "Review focus — read these first"
   },
   "noRisks": "No notable risks flagged.",
   "noHistory": "No prior PRs overlap these files.",
   "overlap": "{count} overlap",
-  "unavailable": "Brief not available yet.",
-  "unavailableHint": "Run a review or open the PR to compute it.",
   "inScope": "In scope",
   "outOfScope": "Out of scope",
   "noneListed": "None listed.",
@@ -24,5 +24,47 @@
     "blame": "blame",
     "noHistory": "No history available for this line.",
     "noCommits": "No commits found for this line."
+  },
+  "prBrief": {
+    "emptyBody": "Get a short summary of what this PR does and why, its risk areas, and which lines to read first. Uses one call to the Risk Brief model.",
+    "generate": "Generate brief",
+    "regenerate": "Regenerate brief",
+    "generating": "Generating…",
+    "stale": "This brief was generated for {from}; the PR is now at {to}",
+    "missingInputs": "Generated without: {list}",
+    "inputs": {
+      "intent": "Intent",
+      "blast": "Blast radius",
+      "specs": "Attached specs",
+      "description": "PR description"
+    },
+    "severity": {
+      "high": "High severity",
+      "medium": "Medium severity",
+      "low": "Low severity"
+    },
+    "riskName": "{severity}: {title}",
+    "toggleExplanation": "Toggle explanation for {title}",
+    "openRef": "Open {ref}",
+    "focusItem": "Open {file} at line {line}: {reason}",
+    "noFocus": "Nothing verifiable to focus on — open Files changed in Smart order.",
+    "errors": {
+      "prefix": "Couldn't generate the brief: {reason}",
+      "retry": "Try again",
+      "reasons": {
+        "llm_failed": "the model call failed",
+        "invalid_output": "the model returned an answer that didn't match the expected format",
+        "timeout": "the model didn't answer within 60 seconds",
+        "unknown": "an unexpected error occurred"
+      },
+      "llmNotConfigured": "No API key is configured for the Risk Brief model's provider.",
+      "settingsLink": "Open Settings → API keys",
+      "prNotSynced": "This PR has no synced files yet. Sync the PR first, then generate the brief."
+    }
+  },
+  "diffNav": {
+    "lineNotInDiff": "Line {line} isn't in the current diff",
+    "fileNotInDiff": "File not in this PR's diff: {path}",
+    "announce": "Line {line} of {path}"
   }
 }

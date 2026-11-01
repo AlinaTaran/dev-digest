@@ -146,6 +146,17 @@ export class SimpleGitClient implements GitClient {
     }
     return readFile(targetReal, 'utf8');
   }
+
+  /**
+   * `git ls-tree -r -z --name-only <sha>`. `-z` keeps non-ASCII paths unquoted
+   * (without it git C-quotes them). `sha` is validated before reaching git so a
+   * caller-supplied value can never be parsed as an option.
+   */
+  async listTrackedFiles(repo: RepoRef, sha: string): Promise<string[]> {
+    if (!/^[0-9a-f]{7,40}$/i.test(sha)) throw new Error('invalid sha');
+    const raw = await this.git(repo).raw(['ls-tree', '-r', '-z', '--name-only', sha]);
+    return raw.split('\0').filter((p) => p.length > 0);
+  }
 }
 
 function parseBlamePorcelain(raw: string): BlameLine[] {

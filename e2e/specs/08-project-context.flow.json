@@ -1,0 +1,31 @@
+{
+  "name": "Project Context page, not-cloned empty state, and agent/skill Context tabs",
+  "description": "From the seeded repo, open the sidebar 'Project Context' item (AC-1), confirm the not-cloned empty state (AC-10; the seeded repo has no local clone), then open the seeded Security Reviewer agent and injection-guard skill and switch to their Context tab (AC-14, AC-21). Read-only seeded data. Doc list, preview and attach (AC-5, AC-64) need a cloned repo the seed does not provide, so they are RTL-only. Waits avoid CSS-uppercased text.",
+  "steps": [
+    {"cmd": ["open", "{BASE}/"], "label": "load the app root"},
+    {"cmd": ["wait", "--url", "/pulls"], "label": "land on the PR list"},
+    {"cmd": ["find", "text", "Project Context", "click"], "label": "click the sidebar Project Context item"},
+    {"cmd": ["wait", "--url", "/context"], "label": "navigate to the project context route"},
+    {"cmd": ["wait", "--load", "networkidle"], "label": "context listing fetch settles"},
+    {"cmd": ["wait", "--text", "Markdown docs from this repository"], "label": "page subtitle renders"},
+    {"cmd": ["wait", "--text", "acme/payments-api"], "label": "repo name is visible in the breadcrumb"},
+    {"cmd": ["wait", "--text", "Import or refresh the repository"], "label": "not-cloned empty state renders (seeded repo has no clone)"},
+    {"cmd": ["open", "{BASE}/agents"], "label": "load the agents list"},
+    {"cmd": ["wait", "--text", "Security Reviewer"], "label": "seeded agent card is visible"},
+    {"cmd": ["wait", "--load", "networkidle"], "label": "agents fetch settles before the card click"},
+    {"cmd": ["find", "text", "Security Reviewer", "click"], "label": "open the Security Reviewer agent"},
+    {"cmd": ["wait", "--url", "/agents/"], "label": "agent editor route reached"},
+    {"cmd": ["find", "role", "button", "click", "--name", "Context"], "label": "switch to the agent Context tab"},
+    {"cmd": ["wait", "--url", "tab=context"], "label": "context tab is active in the URL"},
+    {"cmd": ["wait", "--text", "Order matters — earlier docs appear earlier"], "label": "agent Context tab hint renders"},
+    {"cmd": ["open", "{BASE}/skills"], "label": "load the skills list"},
+    {"cmd": ["wait", "--text", "injection-guard"], "label": "seeded skill card is visible"},
+    {"cmd": ["find", "placeholder", "Search skills…", "fill", "injection-guard"], "label": "filter the rail so the card is at the top (it is below the fold in the nested scroll rail and the click would miss)"},
+    {"cmd": ["wait", "--load", "networkidle"], "label": "filtered list settles before the card click"},
+    {"cmd": ["find", "text", "injection-guard", "click"], "label": "open the injection-guard skill"},
+    {"cmd": ["wait", "--url", "/skills/"], "label": "skill editor route reached"},
+    {"cmd": ["find", "role", "button", "click", "--name", "Context"], "label": "switch to the skill Context tab"},
+    {"cmd": ["wait", "--url", "tab=context"], "label": "context tab is active in the URL"},
+    {"cmd": ["wait", "--text", "Project context to use"], "label": "skill Context tab title renders"}
+  ]
+}

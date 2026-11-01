@@ -25,6 +25,7 @@ export * from './schema/ci';
 export * from './schema/runs';
 export * from './schema/ops';
 export * from './schema/repo-intel';
+export * from './schema/project-context';
 
 import { users, workspaces, workspaceMembers, settings } from './schema/core';
 import { repos } from './schema/repos';
@@ -38,6 +39,7 @@ import { evalCases, evalRuns, conformanceChecks, composedReviews } from './schem
 import { ciInstallations, ciRuns } from './schema/ci';
 import { agentRuns, runTraces, multiAgentRuns } from './schema/runs';
 import { jobs, installedPlugins, digests } from './schema/ops';
+import { agentContextDocs, skillContextDocs } from './schema/project-context';
 import {
   repoIndexState,
   fileEdges,
@@ -89,4 +91,6 @@ export const schema = {
   fileFacts,
   fileRank,
   repoMapCache,
+  agentContextDocs,
+  skillContextDocs,
 };

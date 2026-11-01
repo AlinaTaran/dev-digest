@@ -5,10 +5,9 @@ import { useTranslations } from "next-intl";
 import { Card, SectionLabel, Button, Skeleton, ErrorState } from "@devdigest/ui";
 import { useIntent, useRecomputeIntent } from "@/lib/hooks";
 import { ScopeColumns } from "./ScopeColumns";
-import { RiskChips } from "./RiskChips";
 import { s } from "./styles";
 
-export function IntentPanel({ prId }: { prId: string | null }) {
+export function IntentPanel({ prId, footer }: { prId: string | null; footer?: React.ReactNode }) {
   const t = useTranslations("brief");
   const query = useIntent(prId);
   const recompute = useRecomputeIntent(prId);
@@ -62,9 +61,10 @@ export function IntentPanel({ prId }: { prId: string | null }) {
         <>
           <p style={s.quote}>{query.data.intent}</p>
           <ScopeColumns inScope={query.data.in_scope} outOfScope={query.data.out_of_scope} />
-          <RiskChips risks={query.data.risks} />
         </>
       ) : null}
+
+      {footer}
     </Card>
   );
 }

@@ -10,6 +10,9 @@ import { taskLine } from './helpers.js';
 import { loadDiff } from './diff-loader.js';
 import { IntentService } from '../intent/service.js';
 import { buildIntentBlock } from '../intent/prompts.js';
+import { ProjectContextService, type ResolvedContext } from '../project-context/service.js';
+import { specEntry } from '../project-context/serialize.js';
+import { formatResolveLog, withProjectContextSentence } from './project-context-prompt.js';
 
 /** Thrown by a run when the user cancels it mid-flight (between map files). */
 export class RunCancelledError extends Error {
@@ -129,7 +132,7 @@ export class ReviewRunExecutor {
         `review: agent "${agent.name}" started (${agent.provider}/${agent.model})`,
       );
       try {
-        const outcome = await this.runOneAgent(workspaceId, pull, repo, diff, agent, runId, runLog, intentText);
+        const outcome = await this.runOneAgent(workspaceId, pull, repo, diff, agent, runId, runLog, intentText, logger);
         logger?.info(
           {
             runId,
@@ -162,6 +165,7 @@ export class ReviewRunExecutor {
     runId: string,
     parentLog: RunLogger,
     intentText: string | undefined,
+    logger?: Logger,
   ): Promise<RunOutcome> {
     const start = Date.now();
     // Narrow the fanned-out pre-work logger to THIS run; the shared diff/intent
@@ -200,7 +204,6 @@ export class ReviewRunExecutor {
       const repoMap = repoIntelOn ? await this.buildRepoMapDigest(pull.repoId, runLog) : undefined;
       const rankNote = repoIntelOn ? await this.buildRankNote(pull.repoId, diff, runLog) : '';
 
-      const task = taskLine(pull) + rankNote;
 
       // Skills attached to this agent (Agent editor "Skills" tab), in link
       // order. Disabled skills are dropped; imported (non-manual) skill bodies
@@ -214,6 +217,11 @@ export class ReviewRunExecutor {
             ? l.skill.body
             : wrapUntrusted(`skill:${l.skill.name}`, l.skill.body),
         );
+
+      // Project Context (specs/docs/insights attached to the agent + its skills).
+      // Snapshot once, before any LLM call (AC-49). Never fails a run (NFR-5).
+      const pc = await this.resolveProjectContext(workspaceId, agent, repo, runId, runLog, logger);
+      const task = withProjectContextSentence(taskLine(pull) + rankNote, pc.entries.length > 0);
 
       // ---- Engine: assemble → single-pass → grounding -----------------------
       // The pure review pipeline lives in @devdigest/reviewer-core (shared with
@@ -241,6 +249,8 @@ export class ReviewRunExecutor {
         // Agent's linked, enabled skills — rendered as a "## Skills / rules"
         // block. Omitted entirely when the agent has no skills attached.
         ...(skillBodies.length ? { skills: skillBodies } : {}),
+        // Project Context docs — omitted when empty so the prompt stays byte-identical.
+        ...(pc.entries.length ? { specs: pc.entries.map((e) => specEntry(e.path, e.text)) } : {}),
         task,
         sessionId: `${repo.owner}/${repo.name}#${pull.number}:${agent.name}`,
         onEvent: (e) => runLog.event(e.kind, e.msg, e.data),
@@ -317,7 +327,9 @@ export class ReviewRunExecutor {
         })),
         raw_output: outcome.raw,
         memory_pulled: [],
-        specs_read: [],
+        specs_read: pc.entries.map((e) => e.path),
+        specs_tokens: pc.entries.map(({ path, tokens }) => ({ path, tokens })),
+        specs_missing: pc.missing.map((m) => m.path),
         // Persisted log = the run's FULL event buffer (incl. shared pre-work:
         // diff load + intent), not just events recorded inside this method.
         log: runLog.logFor(runId),
@@ -351,6 +363,55 @@ export class ReviewRunExecutor {
       this.container.runBus.complete(runId);
       throw err;
     }
+  }
+
+  /**
+   * Resolve the effective Project Context for one agent run. Best-effort:
+   * any failure degrades to "no docs" with a log line, never a failed run.
+   */
+  private async resolveProjectContext(
+    workspaceId: string,
+    agent: AgentRow,
+    repo: typeof schema.repos.$inferSelect,
+    runId: string,
+    runLog: RunLogger,
+    logger?: Logger,
+  ): Promise<ResolvedContext> {
+    const t0 = Date.now();
+    let pc: ResolvedContext;
+    try {
+      pc = await new ProjectContextService(this.container).resolveForRun(workspaceId, agent.id, repo);
+    } catch (err) {
+      runLog.info(`project context: resolution failed — continuing without it: ${(err as Error).message}`);
+      return { entries: [], missing: [], cloneSha: null };
+    }
+    for (const m of pc.missing) runLog.info(`project context: ${m.path} skipped — ${m.reason}`);
+    const tokens = pc.entries.reduce((n, e) => n + e.tokens, 0);
+    if (pc.entries.length + pc.missing.length > 0) {
+      runLog.info(
+        formatResolveLog({
+          included: pc.entries.length,
+          tokens,
+          missing: pc.missing.length,
+          cloneSha: pc.cloneSha,
+          mode: agent.strategy ?? REVIEW_STRATEGY,
+        }),
+      );
+    }
+    const missingByReason: Record<string, number> = {};
+    for (const m of pc.missing) missingByReason[m.reason] = (missingByReason[m.reason] ?? 0) + 1;
+    logger?.info(
+      {
+        run_id: runId,
+        included: pc.entries.length,
+        missing_by_reason: missingByReason,
+        tokens,
+        clone_sha: pc.cloneSha,
+        ms: Date.now() - t0,
+      },
+      'project_context.resolve',
+    );
+    return pc;
   }
 
   /**

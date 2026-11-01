@@ -1,0 +1,11 @@
+{
+  "name": "devdigest/run-plan",
+  "version": "0.1.0",
+  "private": true,
+  "summary": "Execute an already-approved implementation plan (docs/plans/<feature>.md) fully autonomously and bring the feature to a review-ready state: implementer agents (multi-agent by DAG, or single), architecture-reviewer, pr-self-review and plan-verifier in parallel, then a bounded fix loop that re-reviews only changed files. Never commits or pushes. Manual invocation only: /run-plan plan:<path> [mode:single|multi] [max-fix:N].",
+  "skills": {
+    "run-plan": {
+      "path": "SKILL.md"
+    }
+  }
+}

@@ -1,17 +1,99 @@
 {
-  "title": "Onboarding Tour",
-  "sections": "Sections",
-  "sectionCount": "{count} sections",
+  "breadcrumb": "Onboarding Tour",
+  "heading": "Onboarding for {name}",
+  "subtitle": "Generated from index of {count} files · last refreshed {ago}",
   "regenerate": "Regenerate",
   "regenerating": "Regenerating…",
-  "unknownError": "Unknown error",
-  "generate": {
-    "title": "Generate onboarding tour",
-    "body": "DevDigest indexes the repo and specs, then writes a 5-section guided tour: overview, architecture, key modules, getting started, and conventions & gotchas.",
-    "cta": "Generate onboarding tour",
-    "generating": "Generating…"
+  "shareLink": "Share link",
+  "share": {
+    "copied": "Link copied. It opens in DevDigest wherever this repo is connected.",
+    "manualLabel": "Tour link",
+    "manualHint": "Couldn’t copy automatically — copy the link below."
   },
-  "loadError": {
-    "title": "Couldn’t load the onboarding tour"
-  }
+  "ago": { "justNow": "just now", "minutes": "{count}m ago", "hours": "{count}h ago", "days": "{count}d ago" },
+  "toc": { "label": "On this page" },
+  "sections": {
+    "architecture": "Architecture overview",
+    "critical_paths": "Critical paths",
+    "run_locally": "How to run locally",
+    "reading_path": "Guided reading path",
+    "first_tasks": "First tasks"
+  },
+  "section": {
+    "toggle": "Toggle {title}",
+    "nothingVerifiable": "Nothing verifiable to show",
+    "needsLlm": "Needs a language model — configure an API key and regenerate.",
+    "noData": "No data available for this section yet."
+  },
+  "empty": {
+    "title": "Generate onboarding tour",
+    "body": "DevDigest indexes the repo and writes a guided tour: architecture, critical paths, how to run, a reading order, and first tasks. Takes 30–60s and ~5,000 tokens.",
+    "cta": "Generate onboarding tour",
+    "generating": "Generating…",
+    "elapsed": "{seconds}s elapsed",
+    "lastFailed": "Last generation failed: {reason}"
+  },
+  "unavailable": {
+    "notCloned": { "title": "Repository not available", "body": "repo is not cloned yet" },
+    "noIndex": {
+      "title": "No usable index",
+      "body": "The repository index is missing, failed, or running on a fallback. Resync to rebuild it.",
+      "resync": "Resync"
+    }
+  },
+  "banner": {
+    "stale": "This tour was generated from {from}; the repo index is now at {to}",
+    "partial": "Based on a partial index ({count} files)",
+    "lastRegenFailed": "Last regeneration failed: {reason}",
+    "settingsLink": "Settings → API Keys"
+  },
+  "reasons": {
+    "timeout": "the generation timed out",
+    "interrupted": "the server restarted during generation",
+    "llm_failed": "the model call failed",
+    "llm_unavailable": "no API key is configured for the Onboarding Tour model",
+    "internal": "an internal error occurred"
+  },
+  "degraded": {
+    "index_partial": "The repo index is partial, so some files are missing from this tour.",
+    "no_import_graph": "No import graph is available (only JS/TS is parsed), so file importance is approximate.",
+    "llm_unavailable": "No API key is configured for the Onboarding Tour model — this tour was built from index facts only.",
+    "llm_failed": "The model call failed — this tour was built from index facts only."
+  },
+  "architecture": {
+    "diagramLabel": "Architecture diagram",
+    "legend": "Legend",
+    "edges": "Connections",
+    "edge": "{from} → {to}",
+    "nodeName": "{label} ({kind})",
+    "kinds": {
+      "client": "client",
+      "entrypoint": "entrypoint",
+      "module": "module",
+      "middleware": "middleware",
+      "datastore": "datastore",
+      "external": "external"
+    },
+    "topDirs": "Top-level directories",
+    "dirFiles": "{count, plural, one {# file} other {# files}}"
+  },
+  "critical": {
+    "open": "Open",
+    "openLabel": "Open {path} on GitHub",
+    "importedBy": "imported by {count, plural, one {# file} other {# files}}"
+  },
+  "run": {
+    "caption": "Commands are generated from repository files. Check each one before you run it.",
+    "copy": "Copy command {command}",
+    "copied": "Copied",
+    "copyFailed": "Couldn’t copy the command",
+    "source": "from {path}"
+  },
+  "reading": { "openLabel": "Open {path} on GitHub" },
+  "tasks": {
+    "complexity": { "low": "Low complexity", "medium": "Medium complexity" },
+    "newFile": "new file",
+    "openLabel": "Open {path} on GitHub"
+  },
+  "loadError": { "title": "Couldn’t load the onboarding tour" }
 }

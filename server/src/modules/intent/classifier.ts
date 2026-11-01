@@ -1,6 +1,6 @@
-import { Intent, Risks, type Risk } from '@devdigest/shared';
+import { Intent } from '@devdigest/shared';
 import type { LLMProvider } from '@devdigest/shared';
-import { INTENT_SYSTEM, RISK_SYSTEM } from './prompts.js';
+import { INTENT_SYSTEM } from './prompts.js';
 import { estimateTokens } from './signals.js';
 
 /** Minimal logger shape so this module doesn't need a hard `fastify` dependency. */
@@ -11,7 +11,7 @@ export interface LoggerLike {
 export interface ClassifyIntentArgs {
   llm: LLMProvider;
   model: string;
-  /** Pre-assembled cheap-signals user message (built once by the caller, shared with the risk classifier). */
+  /** Pre-assembled cheap-signals user message (built once by the caller, built by the caller). */
   input: string;
   /** The full diff's raw text — used ONLY to log token savings, never sent to the model. */
   diffRaw: string;
@@ -54,40 +54,4 @@ export async function classifyIntent(args: ClassifyIntentArgs): Promise<Intent> 
   );
 
   return result.data;
-}
-
-export interface ClassifyRisksArgs {
-  llm: LLMProvider;
-  model: string;
-  /** Same pre-assembled cheap-signals user block as the intent classifier. */
-  input: string;
-  logger: LoggerLike;
-}
-
-/**
- * Calls the cheap risk-classifier model with the SAME header-only signals as
- * the intent classifier (mirrors `classifyIntent`). No separate token-savings
- * log — the intent call above already logs it for the same input.
- */
-export async function classifyRisks(args: ClassifyRisksArgs): Promise<Risk[]> {
-  const { input } = args;
-
-  // Same cheap-signals user block as the intent call (logged there); here we log
-  // the risk system prompt + model so the separate risk_brief call is visible too.
-  args.logger.info(
-    `[intent] assembling PrRisks prompt (model=${args.model}, ~${estimateTokens(input)} tok, same cheap signals as PrIntent):\n` +
-      `----- system -----\n${RISK_SYSTEM}\n----- end -----`,
-  );
-
-  const result = await args.llm.completeStructured({
-    model: args.model,
-    schema: Risks,
-    schemaName: 'PrRisks',
-    messages: [
-      { role: 'system', content: RISK_SYSTEM },
-      { role: 'user', content: input },
-    ],
-  });
-
-  return result.data.risks;
 }

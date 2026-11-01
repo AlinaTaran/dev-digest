@@ -121,6 +121,15 @@ export const onboarding = pgTable('onboarding', {
   repoId: uuid('repo_id')
     .primaryKey()
     .references(() => repos.id, { onDelete: 'cascade' }),
-  json: jsonb('json').notNull(),
-  generatedAt: timestamp('generated_at', { withTimezone: true }).defaultNow().notNull(),
+  // The `Onboarding` tour; null until the first generation lands. Column name
+  // kept (`json`) — renaming makes drizzle-kit prompt.
+  json: jsonb('json'),
+  generatedAt: timestamp('generated_at', { withTimezone: true }),
+  // Generation lifecycle (single-flight claim in the repository).
+  generationId: uuid('generation_id'),
+  generationStatus: text('generation_status'), // generating | done | failed (enforced in code)
+  generationStartedAt: timestamp('generation_started_at', { withTimezone: true }),
+  generationFinishedAt: timestamp('generation_finished_at', { withTimezone: true }),
+  generationError: text('generation_error'), // OnboardingErrorReason code
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });

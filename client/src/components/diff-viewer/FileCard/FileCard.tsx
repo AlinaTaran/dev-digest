@@ -7,7 +7,7 @@ import { useTranslations } from "next-intl";
 import { Icon } from "@devdigest/ui";
 import type { PrFile, Finding, Severity } from "@/lib/types";
 import { AUTO_EXPAND_MAX_LINES } from "../constants";
-import { parsePatch, lineKey, anchorId, type Line } from "../helpers";
+import { parsePatch, lineKey, anchorId, flashLine, type Line } from "../helpers";
 import {
   buildThreads,
   keysForLine,
@@ -59,6 +59,10 @@ export function FileCard({
   findingsLabel,
   mechanicalPlaceholderText,
   onFindingClick,
+  forceOpen,
+  scrollToLine,
+  lineNotInDiffText,
+  onTargetReached,
 }: {
   file: PrFile;
   commenting?: DiffCommentApi;
@@ -80,12 +84,28 @@ export function FileCard({
   /** Smart Diff: clicking a code-line severity chip jumps to that finding in
    *  "Agent runs". Plain DiffViewer callers omit it, so chips stay static. */
   onFindingClick?: (findingId: string) => void;
+  /** Deep link target: open the card (overrides `defaultOpen`, the size rule and
+   *  the mechanical placeholder) so the target line can render. */
+  forceOpen?: boolean;
+  /** Deep link target: new-side line to scroll to + flash. `null` with
+   *  `forceOpen` = file-only target (scroll the header). */
+  scrollToLine?: number | null;
+  /** Pre-formatted "line N isn't in the current diff" message. */
+  lineNotInDiffText?: string;
+  /** Called once the target has been scrolled to; `found` = line was rendered. */
+  onTargetReached?: (found: boolean) => void;
 }) {
   const t = useTranslations("shell");
   const [open, setOpen] = React.useState(
-    defaultOpen ?? (file.additions ?? 0) + (file.deletions ?? 0) <= AUTO_EXPAND_MAX_LINES
+    forceOpen ||
+      (defaultOpen ?? (file.additions ?? 0) + (file.deletions ?? 0) <= AUTO_EXPAND_MAX_LINES)
   );
-  const [pendingScrollLine, setPendingScrollLine] = React.useState<number | null>(null);
+  // A fresh object per click so a repeat click on the same finding re-flashes;
+  // the effect never resets it (that would cancel its own restore timer).
+  const [pendingScroll, setPendingScroll] = React.useState<{ line: number } | null>(null);
+  const headerRef = React.useRef<HTMLDivElement>(null);
+  const onReachedRef = React.useRef(onTargetReached);
+  onReachedRef.current = onTargetReached;
   const lines = React.useMemo(() => parsePatch(file.patch), [file.patch]);
   const lineSeverity = React.useMemo(() => severityByLine(findings), [findings]);
   const hasFindings = !!findings && findings.length > 0;
@@ -93,27 +113,49 @@ export function FileCard({
   // Force-open + scroll-to + transient highlight of the first finding's line,
   // deferred until the (just-opened) lines have actually rendered.
   React.useEffect(() => {
-    if (pendingScrollLine == null) return;
-    const el = document.getElementById(anchorId(file.path, pendingScrollLine));
+    if (pendingScroll == null) return;
+    const el = document.getElementById(anchorId(file.path, pendingScroll.line));
     if (!el) return;
-    el.scrollIntoView?.({ behavior: "smooth", block: "center" });
-    const prevBackground = el.style.backgroundColor;
-    const prevTransition = el.style.transition;
-    el.style.transition = "background-color 0.2s ease";
-    el.style.backgroundColor = "var(--accent-bg)";
-    const timer = setTimeout(() => {
-      el.style.backgroundColor = prevBackground;
-      el.style.transition = prevTransition;
-    }, 1500);
-    setPendingScrollLine(null);
-    return () => clearTimeout(timer);
-  }, [pendingScrollLine, file.path]);
+    return flashLine(el);
+  }, [pendingScroll, file.path]);
+
+  React.useEffect(() => {
+    if (forceOpen) setOpen(true);
+  }, [forceOpen]);
+
+  // Mechanical files skip the real diff entirely — UNLESS they have findings,
+  // in which case the finding's line needs to actually be visible. A deep-link
+  // target (`forceOpen`) also needs the real lines.
+  const showMechanicalPlaceholder = !!mechanical && !hasFindings && !forceOpen;
+
+  // Whether the deep-link line is actually among the rendered lines. S12 residual:
+  // deleted lines use `diff-line:<path>:<oldNo>` ids, which can collide with a
+  // new-side line of the same number earlier in the card; getElementById returns
+  // the first match. Accepted — changing anchor ids would alter the badge flow.
+  const targetLineFound =
+    scrollToLine != null && lines.some((ln) => ln.newNo === scrollToLine);
+  const targetVisible = !!forceOpen && open && !showMechanicalPlaceholder;
+  const lineMissing = targetVisible && scrollToLine != null && !targetLineFound;
+
+  React.useEffect(() => {
+    if (!targetVisible) return;
+    if (scrollToLine != null && targetLineFound) {
+      const el = document.getElementById(anchorId(file.path, scrollToLine));
+      if (el) {
+        const cleanup = flashLine(el);
+        onReachedRef.current?.(true);
+        return cleanup;
+      }
+    }
+    headerRef.current?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+    onReachedRef.current?.(scrollToLine == null);
+  }, [targetVisible, scrollToLine, targetLineFound, file.path]);
 
   function handleFindingsBadgeClick(e: React.MouseEvent) {
     e.stopPropagation(); // don't also toggle the header's open/close click
     if (!findings || findings.length === 0) return;
     setOpen(true);
-    setPendingScrollLine(findings[0]!.start_line);
+    setPendingScroll({ line: findings[0]!.start_line });
   }
 
   // Group this file's comments into threads, then split into ones we can anchor
@@ -131,13 +173,9 @@ export function FileCard({
     ? commenting.comments.filter((c) => c.path === file.path).length
     : 0;
 
-  // Mechanical files skip the real diff entirely — UNLESS they have findings,
-  // in which case the finding's line needs to actually be visible.
-  const showMechanicalPlaceholder = !!mechanical && !hasFindings;
-
   return (
     <div style={s.fileCard}>
-      <div onClick={() => setOpen((o) => !o)} style={s.fileHeader}>
+      <div ref={headerRef} onClick={() => setOpen((o) => !o)} style={s.fileHeader}>
         <Icon.ChevronRight size={13} style={chevronFor(open)} />
         <Icon.FileText size={14} style={s.fileIcon} />
         {hasFindings && <span style={s.findingsDot} aria-hidden="true" />}
@@ -162,6 +200,11 @@ export function FileCard({
       </div>
       {open && (
         <div style={s.fileBody}>
+          {lineMissing && lineNotInDiffText && (
+            <div role="note" style={s.noDiff}>
+              {lineNotInDiffText}
+            </div>
+          )}
           {showMechanicalPlaceholder ? (
             <div style={s.mechanicalPlaceholder}>
               {mechanicalPlaceholderText ?? "Mechanical changes — diff collapsed by default"}

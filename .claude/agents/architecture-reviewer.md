@@ -198,9 +198,12 @@ grounding gate, use "core-grounding-required"), **why** it matters, and a concre
 **Lenses applied:** <onion-architecture | frontend-architecture | next-best-practices | typescript-expert | security — only the ones actually used>
 
 ### Findings (severity-sorted)
-| # | Severity | File:Line | Principle/Rule | Why | Fix |
-|---|----------|-----------|-----------------|-----|-----|
-| 1 | CRITICAL | `path/to/file.ts:42` | service-no-drizzle | … | … |
+| # | Severity | File:Line | Evidence (verbatim) | Principle/Rule | Why | Fix |
+|---|----------|-----------|---------------------|-----------------|-----|-----|
+| 1 | CRITICAL | `path/to/file.ts:42` | `import { db } from '../../db'` | service-no-drizzle | … | … |
+
+The **Evidence** cell is the offending line copied exactly from the file/diff (Step 3) —
+never a description of it.
 
 (If none: "No architectural issues found — evidence: <what was checked>.")
 

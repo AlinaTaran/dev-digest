@@ -7,7 +7,7 @@
  *   .claude/skills/<name>/**   OR  evals/skills/<name>/**   → run evals/skills/<name>  (content tier)
  *   .claude/agents/<name>.md   OR  evals/agents/<name>/**   → run evals/agents/<name>  (tool tier)
  *   any CLAUDE.md / AGENTS.md, .claude/settings.json, any agent definition, the workflow cases,
- *   the eval engine, or a skill the workflow cases name   → run the workflow tier
+ *   the eval engine (src, deps, config, proxy), or a skill the workflow cases name   → run the workflow tier
  *
  * EVAL_SCOPE=all ignores the diff and selects every skill/agent that has evals + the workflow tier
  * (manual `workflow_dispatch` runs).
@@ -95,6 +95,8 @@ const workflowTriggers = SCOPE_ALL
         /^\.claude\/agents\/.+\.md$/.test(f) ||
         /^evals\/workflow\//.test(f) ||
         /^evals\/src\//.test(f) ||
+        // engine deps/config/proxy: a runtime bump can break every tier
+        /^evals\/(package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|vitest\.config\.ts|tsconfig\.json|proxy\/|scripts\/)/.test(f) ||
         [...wfSkills].some((s) => f.startsWith(`.claude/skills/${s}/`)),
     );
 const workflowWanted = workflowTriggers.length > 0;

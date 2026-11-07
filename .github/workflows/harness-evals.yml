@@ -141,9 +141,11 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - name: static SKILL.md gate (no model)
-        run: pnpm eval:quality "${{ matrix.skill }}"
+        env: { SKILL: "${{ matrix.skill }}" }
+        run: pnpm eval:quality "$SKILL"
       - name: skill evals
-        run: pnpm exec vitest run "skills/${{ matrix.skill }}/"
+        env: { SKILL: "${{ matrix.skill }}" }
+        run: pnpm exec vitest run "skills/$SKILL/"
       - if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -185,7 +187,8 @@ jobs:
       - run: docker compose -f proxy/docker-compose.yml up -d
       - run: pnpm proxy:wait
       - name: agent evals
-        run: pnpm exec vitest run "agents/${{ matrix.agent }}/" --no-file-parallelism --retry=1
+        env: { AGENT: "${{ matrix.agent }}" }
+        run: pnpm exec vitest run "agents/$AGENT/" --no-file-parallelism --retry=1
       - if: failure()
         run: docker compose -f proxy/docker-compose.yml logs --tail 100
       - if: always()

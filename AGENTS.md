@@ -29,6 +29,17 @@ Key versions: Fastify 5 · Drizzle 0.38 · Next 15.1 · React 19 · TanStack Que
 - Per package: `dev` · `test` · `typecheck` (+ `build`, `db:migrate`, `db:seed` in server).
 - Server tests split: unit `pnpm exec vitest run --exclude '**/*.it.test.ts'`;
   integration (needs Docker) `pnpm exec vitest run .it.test`.
+- Harness evals (`cd evals && pnpm …`, details in `evals/README.md`): `eval:quality` (static
+  SKILL.md gate, no model) · `eval:skills` · `eval:agents` · `eval:workflow` · `eval:repeat` ·
+  `eval:benchmark` · `eval:delta`. CI runs the right ones per PR (`.github/workflows/harness-evals.yml`).
+
+**Which change → which eval run**
+
+| Change | Run |
+|--------|-----|
+| `.claude/skills/*` | `pnpm eval:quality` + `pnpm eval:skills` |
+| `.claude/agents/*` | `pnpm eval:agents` |
+| any `CLAUDE.md` (or `AGENTS.md`) | `pnpm eval:workflow` |
 
 ## Non-default conventions
 

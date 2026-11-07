@@ -225,6 +225,22 @@ Notes:
 - The proxy container reads `OPENROUTER_API_KEY` straight from the job `env` (fed by the secret).
 - Try the detector locally: `CHANGED_FILES=$'.claude/skills/zod/SKILL.md' node scripts/ci-detect.mjs`.
 
+### Experiment: `architecture-reviewer` vs `architecture-reviewer-lite`
+
+`.claude/agents/architecture-reviewer-lite.md` is a copy of the strict agent with one deliberate
+change: naming the violated rule per finding is **optional** (the strict agent requires it).
+`agents/architecture-reviewer-lite/` has no cases of its own — it imports the strict agent's
+`cases.ts`, so both run the same cases, fixtures and prompts. Compare them by hand (`eval:delta`
+doesn't pair different eval paths):
+
+```bash
+pnpm eval:repeat agents/architecture-reviewer      -n 5 --label strict
+pnpm eval:repeat agents/architecture-reviewer-lite -n 5 --label lite
+```
+
+Look at the per-practice rows for "names the specific documented rule identifier" — that is where
+the relaxation should show up.
+
 ## Module layout — `src/` (the engine)
 
 The engine is split by responsibility with one-directional dependencies (config knows nothing of

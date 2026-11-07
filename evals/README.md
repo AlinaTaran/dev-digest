@@ -209,7 +209,8 @@ without the secret (forks) skip every model job with a `SKIP all model evals` lo
 
 | Variable / input | Used by | Default |
 |------------------|---------|---------|
-| `EVAL_MODEL` / `model` | skills + agents (task) | `deepseek/deepseek-chat` — cheapest model verified on content + read traces |
+| `EVAL_MODEL` / `model` | skills (task) | `deepseek/deepseek-chat` — cheapest model verified on content + read traces |
+| `EVAL_AGENT_MODEL` / `agent_model` | agents (task) | `google/gemini-2.5-flash` — deepseek-chat paraphrased evidence instead of quoting it verbatim and failed `architecture-reviewer` on CI |
 | `EVAL_JUDGE_MODEL` / `judge_model` | skills + agents (judge) | `google/gemini-2.5-flash` — different family from the task model |
 | `EVAL_WORKFLOW_MODEL` / `workflow_model` | workflow tier (task + judge) | `google/gemini-2.5-flash` — the only cheap model verified to dispatch subagents |
 | `EVAL_WORKFLOW_BLOCKING` (variable) | workflow job | unset → `continue-on-error` (activation cases are behaviour-shaped on non-Anthropic models); `true` → hard gate |

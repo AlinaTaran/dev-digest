@@ -8,7 +8,9 @@
 #
 # Model switch (no UI) — first non-empty wins:
 #   workflow_dispatch input  >  repo Actions variable  >  default below
-#   EVAL_MODEL / EVAL_JUDGE_MODEL            skills + agents  (default deepseek/deepseek-chat + google/gemini-2.5-flash)
+#   EVAL_MODEL / EVAL_JUDGE_MODEL            skills task + skills/agents judge (default deepseek/deepseek-chat + google/gemini-2.5-flash)
+#   EVAL_AGENT_MODEL                         agents task      (default google/gemini-2.5-flash — deepseek-chat paraphrases
+#                                            instead of quoting evidence verbatim, failing architecture-reviewer)
 #   EVAL_WORKFLOW_MODEL                      workflow tier    (default google/gemini-2.5-flash — the only
 #                                            cheap model verified to dispatch subagents, evals/README.md)
 #   EVAL_WORKFLOW_BLOCKING=true (variable)   make the workflow job a hard gate (default: non-blocking)
@@ -32,7 +34,11 @@ on:
         options: [changed, all]
         default: changed
       model:
-        description: 'Task model for skills/agents (OpenRouter slug). Empty = variable/default.'
+        description: 'Task model for skills (OpenRouter slug). Empty = variable/default.'
+        type: string
+        default: ''
+      agent_model:
+        description: 'Task model for agents. Empty = variable/default.'
         type: string
         default: ''
       judge_model:
@@ -66,6 +72,7 @@ jobs:
       run_workflow: ${{ steps.detect.outputs.run_workflow }}
       has_key: ${{ steps.key.outputs.has_key }}
       content_model: ${{ steps.models.outputs.content_model }}
+      agent_model: ${{ steps.models.outputs.agent_model }}
       content_judge_model: ${{ steps.models.outputs.content_judge_model }}
       workflow_model: ${{ steps.models.outputs.workflow_model }}
     steps:
@@ -99,15 +106,18 @@ jobs:
       - id: models
         env:
           CONTENT_MODEL: ${{ inputs.model || vars.EVAL_MODEL || 'deepseek/deepseek-chat' }}
+          AGENT_MODEL: ${{ inputs.agent_model || vars.EVAL_AGENT_MODEL || 'google/gemini-2.5-flash' }}
           CONTENT_JUDGE_MODEL: ${{ inputs.judge_model || vars.EVAL_JUDGE_MODEL || 'google/gemini-2.5-flash' }}
           WORKFLOW_MODEL: ${{ inputs.workflow_model || vars.EVAL_WORKFLOW_MODEL || 'google/gemini-2.5-flash' }}
         run: |
           {
             echo "content_model=$CONTENT_MODEL"
+            echo "agent_model=$AGENT_MODEL"
             echo "content_judge_model=$CONTENT_JUDGE_MODEL"
             echo "workflow_model=$WORKFLOW_MODEL"
           } >> "$GITHUB_OUTPUT"
-          echo "skills/agents task model : $CONTENT_MODEL"
+          echo "skills task model        : $CONTENT_MODEL"
+          echo "agents task model        : $AGENT_MODEL"
           echo "skills/agents judge model: $CONTENT_JUDGE_MODEL"
           echo "workflow model           : $WORKFLOW_MODEL"
 
@@ -171,7 +181,7 @@ jobs:
     env:
       # Tool tier runs in the Claude Agent SDK → needs the LiteLLM proxy for non-Anthropic models.
       OPENROUTER_BASE_URL: http://localhost:4000
-      EVAL_MODEL: ${{ needs.detect.outputs.content_model }}
+      EVAL_MODEL: ${{ needs.detect.outputs.agent_model }}
       EVAL_JUDGE_MODEL: ${{ needs.detect.outputs.content_judge_model }}
     steps:
       - uses: actions/checkout@v4

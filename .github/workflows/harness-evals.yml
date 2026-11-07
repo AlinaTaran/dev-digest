@@ -1,0 +1,242 @@
+# Harness evals — the Claude Code harness (.claude/skills, .claude/agents, CLAUDE.md) on OpenRouter.
+#
+# evals/scripts/ci-detect.mjs maps the PR diff onto suites:
+#   changed skill  (.claude/skills/<n>/ or evals/skills/<n>/)  → skills job, evals/skills/<n>
+#   changed agent  (.claude/agents/<n>.md or evals/agents/<n>/) → agents job, evals/agents/<n>
+#   any CLAUDE.md / AGENTS.md, agent, workflow case, engine     → workflow job
+# A changed skill/agent WITHOUT evals is logged as `SKIP … (no evals)` and does not fail CI.
+#
+# Model switch (no UI) — first non-empty wins:
+#   workflow_dispatch input  >  repo Actions variable  >  default below
+#   EVAL_MODEL / EVAL_JUDGE_MODEL            skills + agents  (default deepseek/deepseek-chat + google/gemini-2.5-flash)
+#   EVAL_WORKFLOW_MODEL                      workflow tier    (default google/gemini-2.5-flash — the only
+#                                            cheap model verified to dispatch subagents, evals/README.md)
+#   EVAL_WORKFLOW_BLOCKING=true (variable)   make the workflow job a hard gate (default: non-blocking)
+#
+# Secret: OPENROUTER_API_KEY. PRs without it (forks) skip the model jobs with a log line.
+name: harness-evals
+
+on:
+  pull_request:
+    paths:
+      - '.claude/**'
+      - '**/CLAUDE.md'
+      - '**/AGENTS.md'
+      - 'evals/**'
+      - '.github/workflows/harness-evals.yml'
+  workflow_dispatch:
+    inputs:
+      scope:
+        description: 'changed = suites for files changed vs main; all = every suite that has evals'
+        type: choice
+        options: [changed, all]
+        default: changed
+      model:
+        description: 'Task model for skills/agents (OpenRouter slug). Empty = variable/default.'
+        type: string
+        default: ''
+      judge_model:
+        description: 'Judge model for skills/agents. Empty = variable/default.'
+        type: string
+        default: ''
+      workflow_model:
+        description: 'Model for the workflow tier (task + judge). Empty = variable/default.'
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: harness-evals-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  EVAL_BACKEND: openrouter
+  OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+
+jobs:
+  detect:
+    name: detect changed suites
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      skills: ${{ steps.detect.outputs.skills }}
+      agents: ${{ steps.detect.outputs.agents }}
+      run_workflow: ${{ steps.detect.outputs.run_workflow }}
+      has_key: ${{ steps.key.outputs.has_key }}
+      content_model: ${{ steps.models.outputs.content_model }}
+      content_judge_model: ${{ steps.models.outputs.content_judge_model }}
+      workflow_model: ${{ steps.models.outputs.workflow_model }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - id: detect
+        env:
+          EVAL_SCOPE: ${{ inputs.scope || 'changed' }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          base="${BASE_SHA:-origin/main}"
+          export CHANGED_FILES="$(git diff --name-only "$base"...HEAD)"
+          node evals/scripts/ci-detect.mjs
+
+      - id: key
+        run: |
+          if [ -n "$OPENROUTER_API_KEY" ]; then
+            echo "has_key=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_key=false" >> "$GITHUB_OUTPUT"
+            echo "SKIP all model evals: OPENROUTER_API_KEY is not available (fork PR or secret not set)"
+          fi
+
+      # The single place models are resolved: dispatch input > repo variable > default.
+      - id: models
+        env:
+          CONTENT_MODEL: ${{ inputs.model || vars.EVAL_MODEL || 'deepseek/deepseek-chat' }}
+          CONTENT_JUDGE_MODEL: ${{ inputs.judge_model || vars.EVAL_JUDGE_MODEL || 'google/gemini-2.5-flash' }}
+          WORKFLOW_MODEL: ${{ inputs.workflow_model || vars.EVAL_WORKFLOW_MODEL || 'google/gemini-2.5-flash' }}
+        run: |
+          {
+            echo "content_model=$CONTENT_MODEL"
+            echo "content_judge_model=$CONTENT_JUDGE_MODEL"
+            echo "workflow_model=$WORKFLOW_MODEL"
+          } >> "$GITHUB_OUTPUT"
+          echo "skills/agents task model : $CONTENT_MODEL"
+          echo "skills/agents judge model: $CONTENT_JUDGE_MODEL"
+          echo "workflow model           : $WORKFLOW_MODEL"
+
+  skills:
+    name: skill evals (${{ matrix.skill }})
+    needs: detect
+    if: needs.detect.outputs.has_key == 'true' && needs.detect.outputs.skills != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      max-parallel: 2 # OpenRouter rate limits
+      matrix:
+        skill: ${{ fromJSON(needs.detect.outputs.skills) }}
+    defaults:
+      run:
+        working-directory: evals
+    env:
+      # Content tier calls OpenRouter directly (OpenAI format) — no proxy needed.
+      EVAL_MODEL: ${{ needs.detect.outputs.content_model }}
+      EVAL_JUDGE_MODEL: ${{ needs.detect.outputs.content_judge_model }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: evals/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - name: static SKILL.md gate (no model)
+        run: pnpm eval:quality "${{ matrix.skill }}"
+      - name: skill evals
+        run: pnpm exec vitest run "skills/${{ matrix.skill }}/"
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results-skill-${{ matrix.skill }}
+          path: evals/results/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  agents:
+    name: agent evals (${{ matrix.agent }})
+    needs: detect
+    if: needs.detect.outputs.has_key == 'true' && needs.detect.outputs.agents != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 1 # tool tiers degrade under OpenRouter throttling (evals/README.md)
+      matrix:
+        agent: ${{ fromJSON(needs.detect.outputs.agents) }}
+    defaults:
+      run:
+        working-directory: evals
+    env:
+      # Tool tier runs in the Claude Agent SDK → needs the LiteLLM proxy for non-Anthropic models.
+      OPENROUTER_BASE_URL: http://localhost:4000
+      EVAL_MODEL: ${{ needs.detect.outputs.content_model }}
+      EVAL_JUDGE_MODEL: ${{ needs.detect.outputs.content_judge_model }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: evals/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: docker compose -f proxy/docker-compose.yml up -d
+      - run: pnpm proxy:wait
+      - name: agent evals
+        run: pnpm exec vitest run "agents/${{ matrix.agent }}/" --no-file-parallelism --retry=1
+      - if: failure()
+        run: docker compose -f proxy/docker-compose.yml logs --tail 100
+      - if: always()
+        run: docker compose -f proxy/docker-compose.yml down
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results-agent-${{ matrix.agent }}
+          path: evals/results/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  workflow:
+    name: workflow evals (CLAUDE.md + harness)
+    needs: detect
+    if: needs.detect.outputs.has_key == 'true' && needs.detect.outputs.run_workflow == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    # activation/dispatch cases are behaviour-shaped on non-Anthropic models (evals/README.md) —
+    # non-blocking until the pass rate is known; set repo variable EVAL_WORKFLOW_BLOCKING=true to gate.
+    continue-on-error: ${{ vars.EVAL_WORKFLOW_BLOCKING != 'true' }}
+    defaults:
+      run:
+        working-directory: evals
+    env:
+      OPENROUTER_BASE_URL: http://localhost:4000
+      EVAL_MODEL: ${{ needs.detect.outputs.workflow_model }}
+      EVAL_JUDGE_MODEL: ${{ needs.detect.outputs.workflow_model }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: evals/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: docker compose -f proxy/docker-compose.yml up -d
+      - run: pnpm proxy:wait
+      - name: workflow evals
+        run: pnpm exec vitest run workflow --no-file-parallelism --retry=1
+      - if: failure()
+        run: docker compose -f proxy/docker-compose.yml logs --tail 100
+      - if: always()
+        run: docker compose -f proxy/docker-compose.yml down
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results-workflow
+          path: evals/results/
+          if-no-files-found: ignore
+          retention-days: 14

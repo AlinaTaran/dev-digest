@@ -73,7 +73,8 @@ async function main(): Promise<void> {
   // Cap runs to keep token spend bounded — LLM sessions are expensive. Briefly raised to 5
   // (2026-11-03) for one experiment, reverted back to 2 (2026-11-07) for everyday token economy;
   // raise only deliberately, per-invocation, not by editing this constant back up.
-  const MAX_TIMES = 2;
+  // Per-invocation override: EVAL_REPEAT_MAX=5 pnpm eval:repeat … -n 5   (default stays 2).
+  const MAX_TIMES = Math.max(1, Number(process.env.EVAL_REPEAT_MAX) || 2);
   let times = MAX_TIMES;
   let label: string | undefined;
   const vitestArgs: string[] = [];
@@ -84,7 +85,7 @@ async function main(): Promise<void> {
     else vitestArgs.push(a);
   }
   if (vitestArgs.length === 0 || !Number.isFinite(times) || times < 1) {
-    console.error("usage: pnpm eval:repeat <vitest pattern> [-n times<=2] [-t testNamePattern] [--label name]");
+    console.error("usage: pnpm eval:repeat <vitest pattern> [-n times<=EVAL_REPEAT_MAX (default 2)] [-t testNamePattern] [--label name]");
     process.exit(1);
   }
   if (times > MAX_TIMES) {

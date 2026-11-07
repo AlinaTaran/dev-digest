@@ -17,6 +17,10 @@ services:
       - "127.0.0.1:4000:4000" # loopback only — the proxy is unauthenticated and holds the key
     environment:
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?set OPENROUTER_API_KEY in the environment}
+      # LiteLLM refuses to boot without a master key (UnsafeMasterKeyError). Reuse the OpenRouter key:
+      # both eval clients already send it as `Authorization: Bearer` (SDK via ANTHROPIC_AUTH_TOKEN,
+      # the OpenAI client via apiKey), so auth is enforced with no extra secret or code change.
+      LITELLM_MASTER_KEY: ${OPENROUTER_API_KEY}
     volumes:
       - ./litellm.config.yaml:/app/config.yaml:ro
     command: ["--config", "/app/config.yaml", "--port", "4000", "--num_workers", "1"]

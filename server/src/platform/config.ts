@@ -28,6 +28,8 @@ const EnvSchema = z.object({
   REPO_INTEL_ENABLED: z.string().optional(),
   API_PORT: z.coerce.number().int().default(3001),
   WEB_PORT: z.coerce.number().int().default(3000),
+  // Global per-IP rate limit (requests/minute). Hermetic CI e2e raises it: ~170 requests in ~35 s.
+  RATE_LIMIT_MAX: z.coerce.number().int().positive().default(120),
   DEVDIGEST_CLONE_DIR: z.string().optional(),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   // `.env` (and .env.example) ship `LOG_LEVEL=` empty; an empty string is not a
@@ -79,6 +81,8 @@ export type AppConfig = {
   logLevel: string;
   /** Allowed CORS origin for the Next.js dev server. */
   webOrigin: string;
+  /** Global per-IP rate limit, requests per minute (env RATE_LIMIT_MAX, default 120). */
+  rateLimitMax: number;
   /** Whether memory/RAG embeddings (OpenAI) are enabled. Default false. */
   embeddingsEnabled: boolean;
   /**
@@ -126,6 +130,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     nodeEnv: parsed.NODE_ENV,
     logLevel: parsed.LOG_LEVEL ?? (parsed.NODE_ENV === 'test' ? 'silent' : 'info'),
     webOrigin: `http://localhost:${parsed.WEB_PORT}`,
+    rateLimitMax: parsed.RATE_LIMIT_MAX,
     embeddingsEnabled: parsed.EMBEDDINGS_ENABLED === 'true',
     repoIntelEnabled: parsed.REPO_INTEL_ENABLED !== 'false',
     externalFetchEnabled: parsed.EXTERNAL_FETCH_ENABLED === 'true',

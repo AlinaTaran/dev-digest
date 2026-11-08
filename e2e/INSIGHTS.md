@@ -42,6 +42,7 @@ or a trap someone hit — so the next person (or agent) doesn't relearn it.
 - **2026-10-25 — `find role link click --name "<text>"` fails when the name is a substring shared by several elements (flow 09 TOC).** The Onboarding TOC entry "Critical paths" also matches other nodes, so the command exits non-zero. Click by a scoped CSS locator instead: `find first 'nav a[href="#critical-paths"]' click`. (BSD `sed -i` needs a backup-suffix arg on macOS; use the Edit tool for flow JSON changes.)
 
 - **2026-10-25 — `find first '<css>' click` on an element below the fold exits 0 but does nothing (flow 10 Review focus item).** The PR Overview scrolls inside a container and agent-browser's click does not scroll it (same family as the skills-rail note below). Run `scrollintoview '<css>'` first, then click. Flow 05 also flaked once at "open the PR row" in a full run (passed on rerun).
+- **2026-11-08 — flow 11 (eval compare) quirks.** `find nth N '<css>' click` can exit 0 WITHOUT toggling a checkbox — use `check`. A button below the fold of the page scroll container needs `scrollintoview '<css>'` first; `find role button scrollintoview` is not a valid subaction, so use a scoped CSS selector (e.g. `section[aria-label="Run history"] button`). A killed or failed stack leaves the agent-browser daemon stale and every flow then fails at `open` (0/11) — run `agent-browser close` and rerun `./scripts/e2e.sh`.
 
 ## Recurring Errors & Fixes
 

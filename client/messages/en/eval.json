@@ -32,6 +32,7 @@
   },
   "caseEditor": {
     "newCase": "New eval case",
+    "subtitle": "{name} · simulate a PR and assert the expected output",
     "caseTitle": "Eval case · {name}",
     "runCase": "Run case",
     "running": "Running…",
@@ -42,7 +43,8 @@
     "inputLabel": "Input",
     "tabs": {
       "diff": "Diff",
-      "prMeta": "PR meta"
+      "prMeta": "PR meta",
+      "files": "Files"
     },
     "diffPlaceholder": "--- a/src/config.ts\n+++ b/src/config.ts\n@@ -10,6 +10,7 @@\n+  stripeKey: \"sk_live_...\"",
     "titleLabel": "Title",
@@ -55,7 +57,14 @@
     "invalidJson": "invalid JSON",
     "lastRunPassed": "Last run passed",
     "lastRunFailed": "Last run failed",
-    "resultSummary": "recall {recall}% · precision {precision}% · citation {citation}% · {duration}s"
+    "resultSummary": "recall {recall}% · precision {precision}% · citation {citation}% · {duration}s",
+    "lastRunError": "Last run errored",
+    "filesEmpty": "No files parsed from the diff yet.",
+    "diffAria": "Case diff (unified)",
+    "expectedAria": "Expected output JSON",
+    "inputTabsAria": "Input",
+    "diffError": "Diff: {message}",
+    "saveFailed": "Couldn't save the case."
   },
   "evalsTab": {
     "metricsTitle": "Eval metrics",
@@ -71,7 +80,33 @@
     "run": "Run",
     "running": "Running…",
     "edit": "Edit",
-    "delete": "Delete"
+    "delete": "Delete",
+    "counter": "{passed} / {total} passing",
+    "subtitleExpected": "expected {expected, plural, one {# finding} other {# findings}}, got {got}",
+    "subtitleError": "error: {reason}",
+    "chipMustNotFlag": "must not flag",
+    "chipMustFind": "must find",
+    "chipEmpty": "empty []",
+    "chipAssertEmpty": "assert empty",
+    "scoringNote": "Scoring is mechanical — a finding counts when file matches and line ranges overlap. No model call in the scorer.",
+    "runAria": "Run eval case {name}",
+    "editAria": "Edit eval case {name}",
+    "deleteAria": "Delete eval case {name}",
+    "deleteConfirm": "Delete eval case \"{name}\"? This also removes its results.",
+    "runAll": "Run all evals",
+    "runAllRunning": "Running… {done}/{total}",
+    "noRuns": "No eval runs yet",
+    "viewDashboard": "View full dashboard →",
+    "llmNotConfigured": "No LLM API key is configured, so evals can't run.",
+    "llmNotConfiguredLink": "Open Settings",
+    "runInProgress": "A run is already in progress.",
+    "runNoCases": "Add at least one eval case first.",
+    "runTooManyCases": "Too many cases for one run (max 50).",
+    "runFailedTitle": "Eval run failed",
+    "history": "Run history",
+    "compare": "Compare",
+    "compareSelect": "Select two runs to compare",
+    "details": "Details"
   },
   "page": {
     "crumbSkillsLab": "Skills Lab",
@@ -80,5 +115,193 @@
     "crumbEvals": "Evals",
     "crumbNewCase": "New case",
     "crumbEvalCase": "Eval case"
+  },
+  "tiles": {
+    "recall": "RECALL",
+    "precision": "PRECISION",
+    "citationAccuracy": "CITATION ACCURACY",
+    "citation": "CITATION",
+    "tracesPassed": "TRACES PASSED",
+    "deltaUp": "up {n, plural, one {# point} other {# points}}",
+    "deltaDown": "down {n, plural, one {# point} other {# points}}",
+    "deltaNone": "no change",
+    "noData": "—",
+    "tracesValue": "{passed}/{total}"
+  },
+  "history": {
+    "columns": {
+      "version": "Version",
+      "status": "Status",
+      "startedAt": "Started",
+      "cases": "Cases",
+      "recall": "Recall",
+      "precision": "Precision",
+      "citation": "Citation",
+      "cost": "Cost"
+    },
+    "status": {
+      "running": "Running",
+      "done": "Done",
+      "partial": "Partial",
+      "failed": "Failed"
+    },
+    "errorBadge": "{count, plural, one {# error} other {# errors}}",
+    "interrupted": "Interrupted",
+    "empty": "No eval runs yet",
+    "version": "v{n}",
+    "selectRun": "Select run {version}, {date}",
+    "detailsAria": "Details for run {version}"
+  },
+  "compareModal": {
+    "title": "Compare runs · v{a} → v{b}",
+    "subtitle": "Old prompt vs new — metric deltas and prompt diff on the {n}-case set",
+    "legendOld": "{v} (old)",
+    "legendNew": "{v} (new)",
+    "systemPromptDiff": "System prompt diff",
+    "systemPromptUnchanged": "System prompt unchanged",
+    "noConfigChanges": "No config changes",
+    "caseSetChanged": "Case set changed: +{added} / −{removed} cases",
+    "collapsed": "… {count, plural, one {# unchanged line} other {# unchanged lines}}",
+    "promote": "Promote v{b}",
+    "promoting": "Promoting…",
+    "close": "Close",
+    "field": {
+      "model": "Model",
+      "provider": "Provider",
+      "strategy": "Strategy",
+      "skills": "Skills",
+      "host_agent": "Host agent changed",
+      "host_prompt": "Host agent prompt changed"
+    },
+    "change": "{from} → {to}",
+    "promoted": "Promoted v{b} — agent config updated",
+    "promoteFailed": "Couldn't promote",
+    "skillBodyDiff": "Skill body diff",
+    "skillBodyUnchanged": "Skill body unchanged",
+    "skillPromoted": "Promoted v{b} — skill body updated"
+  },
+  "runDetails": {
+    "title": "Run details · v{n}",
+    "caseColumn": "Case",
+    "resultColumn": "Result",
+    "durationColumn": "Duration",
+    "costColumn": "Cost",
+    "error": "error: {reason}",
+    "errorReason": {
+      "llm_failed": "model call failed",
+      "invalid_output": "invalid model output",
+      "timeout": "timed out",
+      "interrupted": "interrupted"
+    },
+    "runErrorInterrupted": "The run was interrupted before it finished.",
+    "close": "Close",
+    "unmatchedHeading": "Unmatched expectations",
+    "falsePositivesHeading": "False-positive findings",
+    "droppedHeading": "Dropped by grounding",
+    "noResults": "No case results"
+  },
+  "trend": {
+    "title": "Metric trend",
+    "needTwoRuns": "Run evals at least twice to see a trend",
+    "tooltip": "v{version} · {date} · recall {recall}% · precision {precision}% · citation {citation}%",
+    "alert": "{message}",
+    "header": "v{version} · {date}",
+    "chartAria": "Recall, precision and citation accuracy per run",
+    "tableCaption": "Metric trend data",
+    "cost": "Cost",
+    "version": "Version",
+    "date": "Date"
+  },
+  "overview": {
+    "title": "Eval Dashboard",
+    "lastRun": "Last run v{n} · {date} · {passed}/{total} pass",
+    "neverRun": "Never run",
+    "recentRuns": "RECENT EVAL RUNS · ALL AGENTS",
+    "empty": "No agents have eval cases yet.",
+    "emptyRuns": "No eval runs yet.",
+    "runAll": "Run all agents",
+    "runningAll": "Starting…",
+    "summary": "Started {started, plural, one {# run} other {# runs}}, skipped {skipped}.",
+    "skipped": "{count, plural, one {# skipped} other {# skipped}}",
+    "skipReason": {
+      "disabled": "disabled",
+      "no_cases": "no cases",
+      "in_progress": "already running",
+      "llm_not_configured": "no API key",
+      "too_many_cases": "too many cases (max 50)"
+    },
+    "casesCount": "{count, plural, one {# case} other {# cases}}",
+    "openAgent": "Open {name}",
+    "subtitle": "Regression harness across all reviewer agents · pick an agent to see its runs",
+    "agentsHeading": "AGENTS",
+    "loadError": "Couldn't load eval metrics.",
+    "emptyBody": "Open a pull request, accept or dismiss a finding, then use “Turn into eval case” on the finding card.",
+    "recall": "RECALL",
+    "prec": "PREC",
+    "cite": "CITE",
+    "columns": {
+      "agent": "Agent",
+      "ranAt": "Ran at",
+      "version": "Version",
+      "recall": "Recall",
+      "precision": "Precision",
+      "citation": "Citation",
+      "pass": "Pass",
+      "status": "Status"
+    }
+  },
+  "agentDashboard": {
+    "crumbAgents": "Agents",
+    "backToAll": "← All agents",
+    "runsOnSet": "{runs, plural, one {# run} other {# runs}} on the {cases}-case set",
+    "period": {
+      "label": "Period",
+      "s7": "7 days",
+      "s30": "30 days",
+      "s90": "90 days",
+      "d7": "Last 7 days",
+      "d30": "Last 30 days",
+      "d90": "Last 90 days"
+    },
+    "runEval": "Run eval",
+    "running": "Running…",
+    "noRunsInPeriod": "No runs in the last {days} days",
+    "show90": "Show 90 days",
+    "agentSelect": "Agent",
+    "loadError": "Couldn't load this agent's eval dashboard."
+  },
+  "editor": {
+    "nameRequired": "Name is required",
+    "nameTooLong": "Name must be at most {max} characters",
+    "diffRequired": "Diff is required",
+    "diffTooLarge": "Diff is too large (max 256 KB)",
+    "jsonValid": "valid JSON",
+    "jsonInvalid": "invalid JSON",
+    "jsonErrorAt": "{path}: {message}",
+    "addSkeleton": "+ Finding skeleton",
+    "runOnSave": "Run on save",
+    "warnFileNotInDiff": "file not in diff",
+    "warnOutsideFragment": "Finding line is outside the diff fragment",
+    "fromFinding": "Created from a finding",
+    "tooManyExpectations": "At most {max} expectations",
+    "saved": "Saved",
+    "deleted": "Case deleted",
+    "discard": "Discard changes?"
+  },
+  "turnIntoCase": {
+    "unavailable": {
+      "undecided": "Accept or dismiss this finding first.",
+      "no_diff": "The diff for this finding isn't available.",
+      "too_large": "The diff for this finding is too large to store.",
+      "agent_missing": "The agent that produced this finding no longer exists.",
+      "skill_not_linked": "That skill isn't linked to the review's agent."
+    }
+  },
+  "hostAgent": {
+    "label": "Host agent",
+    "placeholder": "Select an agent",
+    "none": "Link this skill to an agent to run evals",
+    "warning": "Different host agents — metrics are not directly comparable ({a} vs {b})",
+    "unknown": "unknown agent"
   }
 }

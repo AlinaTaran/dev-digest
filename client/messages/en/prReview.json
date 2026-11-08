@@ -5,6 +5,24 @@
     "suggestedFix": "Suggested fix",
     "accept": "Accept",
     "dismiss": "Dismiss",
+    "turnIntoEvalCase": "Turn into eval case",
+    "evalCase": {
+      "undecided": "Accept or dismiss this finding first",
+      "added": "Added to {owner} eval set",
+      "existing": "Already in {owner} eval set",
+      "viewCase": "View case",
+      "targetLabel": "Eval set to add the case to",
+      "targetAgent": "Review's agent",
+      "targetSkill": "Skill: {name}",
+      "failed": "Couldn't create the eval case. Try again.",
+      "reason": {
+        "undecided": "Accept or dismiss this finding first.",
+        "no_diff": "The diff for this finding isn't available.",
+        "too_large": "The diff for this finding is too large to store.",
+        "agent_missing": "The agent that produced this finding no longer exists.",
+        "skill_not_linked": "That skill isn't linked to the review's agent."
+      }
+    },
     "learn": "Learn",
     "replyToAuthor": "Reply to author",
     "replyPlaceholder": "Reply to the author about this finding…",

@@ -5,10 +5,9 @@
 
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { ErrorState, Skeleton, Icon, Badge } from "@devdigest/ui";
+import { ErrorState, Skeleton } from "@devdigest/ui";
 import { AppShell } from "../../../components/app-shell";
 import { SkillsRail } from "../_components/SkillsRail/SkillsRail";
-import { typeColor } from "../_components/SkillsRail/helpers";
 import { SkillEditor } from "../_components/SkillEditor/SkillEditor";
 import { VALID_TABS } from "../_components/SkillEditor/constants";
 import { useSkill } from "../../../lib/hooks/skills";
@@ -64,18 +63,7 @@ export default function SkillEditorPage() {
           </div>
         ) : (
           <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "16px 28px 0", flexShrink: 0 }}>
-              <Icon.Sparkles size={18} style={{ color: "var(--accent)" }} />
-              <h1 style={{ fontSize: 18, fontWeight: 700 }}>{skill.name}</h1>
-              <Badge color={typeColor(skill.type)}>{t(`listItem.type.${skill.type}`)}</Badge>
-              <Badge color="var(--text-secondary)" mono icon="GitBranch">
-                {t("preview.version", { version: skill.version })}
-              </Badge>
-              {!skill.enabled && <Badge color="var(--text-muted)">{t("editor.disabled")}</Badge>}
-            </div>
-            <div style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
-              <SkillEditor skill={skill} tab={tab} onTab={setTab} />
-            </div>
+            <SkillEditor skill={skill} tab={tab} onTab={setTab} />
           </div>
         )}
       </div>

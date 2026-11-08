@@ -1,0 +1,20 @@
+{
+  "name": "Eval Dashboard lists the Security Reviewer and Compare renders the seeded prompt diff",
+  "description": "From /eval, the seeded Security Reviewer card opens its eval dashboard, two seeded runs (v1 and v2) are selected and Compare shows the system-prompt diff. Read-only seeded data (no model call, no API key). Assumes a freshly-seeded DB (see e2e/README.md).",
+  "steps": [
+    { "cmd": ["open", "{BASE}/eval"], "label": "open the Eval Dashboard" },
+    { "cmd": ["wait", "--url", "/eval"], "label": "land on /eval" },
+    { "cmd": ["wait", "--text", "Security Reviewer"], "label": "seeded agent card renders" },
+    { "cmd": ["wait", "--load", "networkidle"], "label": "dashboard hydrates" },
+    { "cmd": ["find", "text", "Security Reviewer", "click"], "label": "open the Security Reviewer dashboard" },
+    { "cmd": ["wait", "--url", "/eval/"], "label": "navigate to the agent eval route" },
+    { "cmd": ["wait", "--text", "Run history"], "label": "run history renders" },
+    { "cmd": ["wait", "--load", "networkidle"], "label": "agent dashboard hydrates" },
+    { "cmd": ["find", "nth", "0", "input[aria-label^=\"Select run\"]", "check"], "label": "select the first run" },
+    { "cmd": ["find", "nth", "1", "input[aria-label^=\"Select run\"]", "check"], "label": "select the second run" },
+    { "cmd": ["scrollintoview", "section[aria-label=\"Run history\"] button"], "label": "scroll Compare into view (it sits below the fold in the page scroll container)" },
+    { "cmd": ["find", "first", "section[aria-label=\"Run history\"] button", "click"], "label": "click Compare" },
+    { "cmd": ["wait", "--text", "Do not flag parameterised queries as injection."], "label": "added prompt line renders in the diff" },
+    { "cmd": ["wait", "--text", "Be thorough and flag every query you see."], "label": "removed prompt line renders in the diff" }
+  ]
+}

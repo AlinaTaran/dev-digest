@@ -1,0 +1,35 @@
+import type { CSSProperties } from "react";
+
+export const s = {
+  grid: { display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", minHeight: 420 } satisfies CSSProperties,
+  left: { padding: 20, borderRight: "1px solid var(--border)", minWidth: 0 } satisfies CSSProperties,
+  right: { padding: 20, minWidth: 0, display: "flex", flexDirection: "column", gap: 12 } satisfies CSSProperties,
+  sectionLabel: { fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 8 } satisfies CSSProperties,
+  jsonHeader: { display: "flex", alignItems: "center", gap: 10 } satisfies CSSProperties,
+  jsonState: (valid: boolean): CSSProperties => ({
+    fontSize: 12.5,
+    fontWeight: 600,
+    padding: "2px 8px",
+    borderRadius: 6,
+    color: valid ? "var(--ok)" : "var(--crit)",
+    background: valid ? "var(--ok-bg)" : "var(--crit-bg)",
+  }),
+  skeletonBtn: { marginLeft: "auto" } satisfies CSSProperties,
+  jsonError: { fontSize: 12.5, color: "var(--crit)" } satisfies CSSProperties,
+  warnings: { margin: 0, paddingLeft: 18, fontSize: 12.5, color: "var(--warn)" } satisfies CSSProperties,
+  diffError: { fontSize: 12.5, color: "var(--crit)", margin: "8px 0" } satisfies CSSProperties,
+  preview: { marginTop: 12, maxHeight: 260, overflow: "auto" } satisfies CSSProperties,
+  fileRow: { display: "flex", gap: 12, fontSize: 13, padding: "4px 0" } satisfies CSSProperties,
+  strip: (state: "passed" | "failed" | "error"): CSSProperties => ({
+    marginTop: "auto",
+    padding: "10px 14px",
+    borderRadius: 8,
+    fontSize: 13,
+    border: "1px solid " + (state === "passed" ? "var(--ok)" : "var(--crit)"),
+    background: state === "passed" ? "var(--ok-bg)" : "var(--crit-bg)",
+    color: "var(--text-secondary)",
+  }),
+  stripStrong: { color: "var(--text-primary)", fontWeight: 600 } satisfies CSSProperties,
+  footer: { display: "flex", alignItems: "center", gap: 10, width: "100%" } satisfies CSSProperties,
+  runOnSave: { display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--text-secondary)", marginRight: "auto" } satisfies CSSProperties,
+};

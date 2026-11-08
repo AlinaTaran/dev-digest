@@ -67,7 +67,10 @@ export class AgentsService {
 
   /** Delete an agent (and its versions/skill-links, via cascade). */
   async delete(workspaceId: string, id: string): Promise<boolean> {
-    return this.repo.deleteById(workspaceId, id);
+    const ok = await this.repo.deleteById(workspaceId, id);
+    // Polymorphic owner (no FK): remove the agent's eval cases + eval run history (D11).
+    if (ok) await this.container.evalRepo.deleteByOwner(workspaceId, 'agent', id);
+    return ok;
   }
 
   async create(workspaceId: string, input: CreateAgentInput, userId?: string): Promise<Agent> {

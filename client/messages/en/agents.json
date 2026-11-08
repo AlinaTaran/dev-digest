@@ -50,6 +50,10 @@
       "stats": "Stats",
       "ci": "CI",
       "context": "Context"
+    },
+    "evals": {
+      "detailsLoading": "Loading run details…",
+      "detailsError": "Couldn’t load this run’s details."
     }
   },
   "config": {

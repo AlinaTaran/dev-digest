@@ -49,7 +49,8 @@ Key versions: Fastify 5 · Drizzle 0.38 · Next 15.1 · React 19 · TanStack Que
   not built JS. Its `build` is `tsc --noEmit` (emits nothing).
 - **Package managers differ**: server + client use pnpm; reviewer-core + e2e + mcp-server use npm.
 - **Migrations are NOT run on boot** — apply them manually.
-- `server/package.json` is `skip-worktree` (a local variant diverges); CI invokes the
+- `server/package.json` is a normal tracked file (not `skip-worktree`); lesson gate scripts
+  (`verify:l03`, `verify:l06`) live there and run as `cd server && pnpm verify:lNN`. CI invokes the
   test split via `pnpm exec vitest run …`, not committed `test:unit`/`test:integration`.
 
 ## Gotchas

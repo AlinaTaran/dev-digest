@@ -38,6 +38,43 @@ export function wordDiff(a: string, b: string): WordToken[] {
   }
   while (i < n) out.push({ kind: "del", text: x[i++]! });
   while (j < m) out.push({ kind: "add", text: y[j++]! });
+  return coalesce(out);
+}
+
+/** Group each run of changes into one removed block followed by one added block, so a rewritten
+    sentence reads "old words | new words" instead of interleaving word by word. Whitespace that
+    sits between two changes is absorbed into both blocks (keeps the round-trip invariant). */
+function coalesce(tokens: WordToken[]): WordToken[] {
+  const out: WordToken[] = [];
+  let dels: string[] = [];
+  let adds: string[] = [];
+  let gap: string[] = [];
+  const flush = () => {
+    if (dels.length) out.push({ kind: "del", text: dels.join("") });
+    if (adds.length) out.push({ kind: "add", text: adds.join("") });
+    dels = [];
+    adds = [];
+    if (gap.length) out.push({ kind: "same", text: gap.join("") });
+    gap = [];
+  };
+  for (const t of tokens) {
+    if (t.kind === "same") {
+      if ((dels.length || adds.length) && /^\s+$/.test(t.text)) {
+        gap.push(t.text);
+        continue;
+      }
+      flush();
+      out.push(t);
+    } else {
+      if (gap.length) {
+        dels.push(...gap);
+        adds.push(...gap);
+        gap = [];
+      }
+      (t.kind === "del" ? dels : adds).push(t.text);
+    }
+  }
+  flush();
   return out;
 }
 

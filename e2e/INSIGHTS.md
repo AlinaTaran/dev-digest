@@ -63,4 +63,6 @@ or a trap someone hit — so the next person (or agent) doesn't relearn it.
 **Why:** `CLAUDE.md` is a thin map; durable history belongs in a lazy-loaded file.
 **Consequence:** Add an entry whenever a non-obvious decision or gotcha lands.
 
+- **2026-11-08 — flow 11 after the UI was aligned to the design: three traps.** (1) Run-history checkboxes became `<button role="checkbox">`, so `input[aria-label^=...]` no longer matches — use `[role="checkbox"][aria-label^="Select run"]` with `check` (`click` through `find nth` did not open Compare). (2) `wait --text` needs a CONTIGUOUS DOM string: the Compare prompt diff is a word diff in separate spans, so assert a phrase inside one added/removed block (`parameterised queries as injection.`, `looks suspicious.`), not a whole rewritten sentence. (3) `./scripts/e2e.sh` rebuilds into the shared `client/.next`, which leaves the dev web on :3000 calling :3101 ("Cannot reach the DevDigest engine") — `rm -rf client/.next` and restart `pnpm dev` after every local e2e run. Also a one-off `find text … click` failure in an unrelated flow (05) passed on rerun — rerun once before chasing it.
+
 ## Open Questions

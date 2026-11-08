@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { Verdict, Finding } from './findings.js';
+import { EvalSuiteRun } from './eval.js';
 import { EvalRun, EvalOwnerKind, Conformance, Provider, CiFailOn } from './knowledge.js';
 
 /**
@@ -55,6 +56,8 @@ export type EvalRunResult = z.infer<typeof EvalRunResult>;
 
 /** One point on the dashboard trend (per run, chronological). */
 export const EvalTrendPoint = z.object({
+  run_id: z.string(),
+  agent_version: z.number().int(),
   ran_at: z.string(),
   recall: z.number(),
   precision: z.number(),
@@ -83,7 +86,7 @@ export const EvalDashboard = z.object({
     citation_accuracy: z.number(),
   }),
   trend: z.array(EvalTrendPoint),
-  recent_runs: z.array(EvalRunRecord),
+  recent_runs: z.array(EvalSuiteRun),
   alert: z.string().nullable(),
 });
 export type EvalDashboard = z.infer<typeof EvalDashboard>;

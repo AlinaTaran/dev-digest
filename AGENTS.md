@@ -29,6 +29,17 @@ Key versions: Fastify 5 · Drizzle 0.38 · Next 15.1 · React 19 · TanStack Que
 - Per package: `dev` · `test` · `typecheck` (+ `build`, `db:migrate`, `db:seed` in server).
 - Server tests split: unit `pnpm exec vitest run --exclude '**/*.it.test.ts'`;
   integration (needs Docker) `pnpm exec vitest run .it.test`.
+- Harness evals (`cd evals && pnpm …`, details in `evals/README.md`): `eval:quality` (static
+  SKILL.md gate, no model) · `eval:skills` · `eval:agents` · `eval:workflow` · `eval:repeat` ·
+  `eval:benchmark` · `eval:delta`. CI runs the right ones per PR (`.github/workflows/harness-evals.yml`).
+
+**Which change → which eval run**
+
+| Change | Run |
+|--------|-----|
+| `.claude/skills/*` | `pnpm eval:quality` + `pnpm eval:skills` |
+| `.claude/agents/*` | `pnpm eval:agents` |
+| any `CLAUDE.md` (or `AGENTS.md`) | `pnpm eval:workflow` |
 
 ## Non-default conventions
 
@@ -38,7 +49,8 @@ Key versions: Fastify 5 · Drizzle 0.38 · Next 15.1 · React 19 · TanStack Que
   not built JS. Its `build` is `tsc --noEmit` (emits nothing).
 - **Package managers differ**: server + client use pnpm; reviewer-core + e2e + mcp-server use npm.
 - **Migrations are NOT run on boot** — apply them manually.
-- `server/package.json` is `skip-worktree` (a local variant diverges); CI invokes the
+- `server/package.json` is a normal tracked file (not `skip-worktree`); lesson gate scripts
+  (`verify:l03`, `verify:l06`) live there and run as `cd server && pnpm verify:lNN`. CI invokes the
   test split via `pnpm exec vitest run …`, not committed `test:unit`/`test:integration`.
 
 ## Gotchas

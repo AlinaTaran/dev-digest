@@ -15,6 +15,7 @@ Reusable AI skills that provide specialized knowledge and workflows. Canonical l
 | [zod](zod/SKILL.md) | Full-stack | Zod schema validation, parsing, error handling, type inference |
 | [typescript-expert](typescript-expert/SKILL.md) | Full-stack | Type-level programming, performance, tooling, migrations |
 | [security](security/SKILL.md) | Full-stack | OWASP Top 10:2025, auth, injection, uploads, secrets |
+| [dependency-checker](dependency-checker/SKILL.md) | Full-stack | Dependency audit across all packages: graph, size, version drift, unused deps, P0-P2 priorities |
 | [mermaid-diagram](mermaid-diagram/SKILL.md) | Shared | Mermaid diagrams in markdown (flowcharts, sequence, ERD, …) |
 | [run-plan](run-plan/SKILL.md) | Workflow | `/run-plan plan:<path> [mode:single\|multi] [max-fix:N]` — autonomously executes an approved plan to a review-ready state (manual only) |
 | [workflow-retro](workflow-retro/SKILL.md) | Workflow | `/workflow-retro [deep] [since:] [until:] [label:]` — retrospective of a multi-agent run: tokens, agents, launch order, duplication, proposals; appends to `docs/retros/ledger.md` (manual only) |

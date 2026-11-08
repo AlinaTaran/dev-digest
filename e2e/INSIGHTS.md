@@ -42,6 +42,7 @@ or a trap someone hit — so the next person (or agent) doesn't relearn it.
 - **2026-10-25 — `find role link click --name "<text>"` fails when the name is a substring shared by several elements (flow 09 TOC).** The Onboarding TOC entry "Critical paths" also matches other nodes, so the command exits non-zero. Click by a scoped CSS locator instead: `find first 'nav a[href="#critical-paths"]' click`. (BSD `sed -i` needs a backup-suffix arg on macOS; use the Edit tool for flow JSON changes.)
 
 - **2026-10-25 — `find first '<css>' click` on an element below the fold exits 0 but does nothing (flow 10 Review focus item).** The PR Overview scrolls inside a container and agent-browser's click does not scroll it (same family as the skills-rail note below). Run `scrollintoview '<css>'` first, then click. Flow 05 also flaked once at "open the PR row" in a full run (passed on rerun).
+- **2026-11-08 — flow 11 (eval compare) quirks.** `find nth N '<css>' click` can exit 0 WITHOUT toggling a checkbox — use `check`. A button below the fold of the page scroll container needs `scrollintoview '<css>'` first; `find role button scrollintoview` is not a valid subaction, so use a scoped CSS selector (e.g. `section[aria-label="Run history"] button`). A killed or failed stack leaves the agent-browser daemon stale and every flow then fails at `open` (0/11) — run `agent-browser close` and rerun `./scripts/e2e.sh`.
 
 ## Recurring Errors & Fixes
 
@@ -61,5 +62,9 @@ or a trap someone hit — so the next person (or agent) doesn't relearn it.
 **Decision:** Track per-package learnings here, referenced from `e2e/CLAUDE.md`.
 **Why:** `CLAUDE.md` is a thin map; durable history belongs in a lazy-loaded file.
 **Consequence:** Add an entry whenever a non-obvious decision or gotcha lands.
+
+- **2026-11-08 — flow 11 after the UI was aligned to the design: three traps.** (1) Run-history checkboxes became `<button role="checkbox">`, so `input[aria-label^=...]` no longer matches — use `[role="checkbox"][aria-label^="Select run"]` with `check` (`click` through `find nth` did not open Compare). (2) `wait --text` needs a CONTIGUOUS DOM string: the Compare prompt diff is a word diff in separate spans, so assert a phrase inside one added/removed block (`parameterised queries as injection.`, `looks suspicious.`), not a whole rewritten sentence. (3) `./scripts/e2e.sh` rebuilds into the shared `client/.next`, which leaves the dev web on :3000 calling :3101 ("Cannot reach the DevDigest engine") — `rm -rf client/.next` and restart `pnpm dev` after every local e2e run. Also a one-off `find text … click` failure in an unrelated flow (05) passed on rerun — rerun once before chasing it.
+
+- **2026-11-08 — CI `browser flows` failed only on the LAST flow with "Couldn't load …" while local `./scripts/e2e.sh` was green: the API's global per-IP rate limit (120 req/min) returned 429.** The 11 flows make ~170 API calls; a CI runner (prod `next build`) finishes them in ~35 s, a local `next dev` run is slower and spreads them over >1 min. Proven locally with `RATE_LIMIT_MAX=60 ./scripts/e2e.sh` (hundreds of 429s). The limit is now `RATE_LIMIT_MAX` (server config, default 120) and `e2e-web.yml` starts the API with `RATE_LIMIT_MAX=1000`. Adding flows/requests to the suite? Keep that env; a 429 shows up in the UI as the generic query-error state, not as a clear message. The CI failure screenshot (artifact `e2e-failure`, `gh run download <id> -n e2e-failure`) is what revealed the page state.
 
 ## Open Questions

@@ -190,8 +190,13 @@
     "noFindings": "No findings yet from reviews using this skill."
   },
   "evals": {
-    "comingSoonTitle": "Evals coming soon",
-    "comingSoonBody": "Recall/precision/citation-accuracy trace runs for this skill land in a later lesson."
+    "runOnEvals": "Run on evals",
+    "metricsSubtitle": "Recall / Precision / Citation for this skill's eval cases, run through the host agent",
+    "editorSubtitle": "{name} · simulate a PR and assert the expected output",
+    "noHostAgent": "Enable an agent to host skill evals first.",
+    "trendHost": "Host: {name}",
+    "detailsLoading": "Loading run details…",
+    "detailsError": "Couldn't load run details."
   },
   "context": {
     "title": "Project context to use",

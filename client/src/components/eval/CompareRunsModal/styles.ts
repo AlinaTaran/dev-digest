@@ -1,0 +1,40 @@
+import type { CSSProperties } from "react";
+
+export const s = {
+  body: { display: "flex", flexDirection: "column", gap: 16, padding: "18px 24px" } satisfies CSSProperties,
+  tiles: { display: "flex", gap: 12 } satisfies CSSProperties,
+  tile: {
+    flex: 1,
+    background: "var(--bg-surface)",
+    border: "1px solid var(--border)",
+    borderRadius: 9,
+    padding: "12px 14px",
+  } satisfies CSSProperties,
+  label: { fontSize: 11.5, fontWeight: 600, letterSpacing: "0.04em", color: "var(--text-muted)" } satisfies CSSProperties,
+  values: { display: "flex", alignItems: "baseline", gap: 6, marginTop: 4, fontSize: 15, flexWrap: "wrap" } satisfies CSSProperties,
+  old: { color: "var(--text-muted)" } satisfies CSSProperties,
+  next: { fontWeight: 700, fontSize: 18 } satisfies CSSProperties,
+  delta: (dir: "up" | "down" | "flat"): CSSProperties => ({
+    fontSize: 12.5,
+    fontWeight: 600,
+    color: dir === "up" ? "var(--ok)" : dir === "down" ? "var(--crit)" : "var(--text-muted)",
+  }),
+  note: { fontSize: 13, color: "var(--text-secondary)" } satisfies CSSProperties,
+  arrow: { color: "var(--text-muted)", alignSelf: "center" } satisfies CSSProperties,
+  heading: {
+    display: "flex",
+    alignItems: "center",
+    gap: 7,
+    fontSize: 11.5,
+    fontWeight: 700,
+    letterSpacing: "0.05em",
+    textTransform: "uppercase",
+    color: "var(--text-muted)",
+    margin: 0,
+  } satisfies CSSProperties,
+  legend: { display: "flex", gap: 14, fontSize: 11.5, color: "var(--text-secondary)", margin: "8px 0 10px" } satisfies CSSProperties,
+  legendItem: { display: "inline-flex", alignItems: "center", gap: 6 } satisfies CSSProperties,
+  swatch: (bg: string): CSSProperties => ({ width: 11, height: 11, borderRadius: 3, background: bg, border: "1px solid var(--border)" }),
+  list: { margin: 0, paddingLeft: 18, fontSize: 13, color: "var(--text-secondary)", overflowWrap: "anywhere" } satisfies CSSProperties,
+  footer: { display: "flex", justifyContent: "flex-end", gap: 10 } satisfies CSSProperties,
+};

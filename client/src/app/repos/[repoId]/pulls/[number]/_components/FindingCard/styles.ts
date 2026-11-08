@@ -88,6 +88,29 @@ export const s = {
     marginTop: 14,
     flexWrap: "wrap",
   } satisfies CSSProperties,
+  evalHint: {
+    alignSelf: "center",
+    fontSize: 12,
+    color: "var(--text-muted)",
+  } satisfies CSSProperties,
+  evalTarget: {
+    alignSelf: "center",
+    fontSize: 12,
+    padding: "4px 6px",
+    color: "var(--text-secondary)",
+    background: "var(--bg-elevated)",
+    border: "1px solid var(--border)",
+    borderRadius: 6,
+  } satisfies CSSProperties,
+  evalLink: {
+    color: "var(--accent)",
+    textDecoration: "underline",
+  } satisfies CSSProperties,
+  evalError: {
+    alignSelf: "center",
+    fontSize: 12,
+    color: "var(--crit)",
+  } satisfies CSSProperties,
   composer: {
     marginTop: 12,
     display: "flex",

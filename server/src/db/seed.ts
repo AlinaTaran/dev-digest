@@ -3,6 +3,7 @@ import { createDb, type Db } from './client.js';
 import * as t from './schema.js';
 import { eq, and, isNull, sql } from 'drizzle-orm';
 import { SEED_ONBOARDING_TOUR } from './seed-onboarding.js';
+import { seedEval } from './seed-eval.js';
 import { SEED_CONFIG_PATCH, SEED_PR_BRIEF } from './seed-brief.js';
 import {
   GENERAL_REVIEWER_PROMPT,
@@ -394,6 +395,8 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
     'secrets-in-code-gate',
     'authz-boundary-check',
   ]);
+
+  await seedEval(db, workspaceId);
 
   return { workspaceId, userId };
 }

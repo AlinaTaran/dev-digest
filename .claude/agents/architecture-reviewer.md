@@ -58,9 +58,17 @@ and report findings. You do not fix anything and you do not review anything else
   of resolving it through the DI container (`server/src/platform/container.ts`, e.g.
   `container.llm()`, `container.github()`, `container.git`, `container.repoIntel`); a
   port `interface` declared outside `server/src/vendor/shared/adapters.ts`.
-- **`reviewer-core` purity**: no DB/Fastify/FS/network imports — its only side effect is
-  the injected `LLMProvider`; other dependencies must arrive via `ReviewInput` / a
-  function argument, never a fresh import from `server/`.
+- **`reviewer-core` purity**: no DB/Fastify/FS/network imports (including Node I/O
+  built-ins like `fs`/`child_process`/`net`/`http`) — its only side effect is the injected
+  `LLMProvider`; other dependencies must arrive via `ReviewInput` / a function argument,
+  never a fresh import from `server/`. Named rules for these live in
+  `.claude/skills/onion-architecture/dependency-cruiser.arch.cjs`.
+- **`reviewer-core` grounding gate** (see `reviewer-core/CLAUDE.md` and
+  `reviewer-core/grounding.ts`): every path that produces findings must pass them through
+  `groundFindings()` before returning them, and the score must be recomputed from the
+  grounded findings — never the model's self-reported score. Skipping or bypassing this
+  call is a real architectural contract violation, not a correctness nit, even though on
+  its surface it reads like a logic simplification.
 - **Boundary/port leakage**: DB rows (Drizzle result types) or Fastify `req`/`reply`
   leaking past the route handler into a service or deeper; a `RequestContext`
   (`modules/_shared/context.ts`) should carry request data inward instead.
@@ -100,6 +108,12 @@ If the request doesn't say, infer from context (e.g. "review my changes" → dif
 `git diff`/`git status`); if genuinely ambiguous, state your assumption explicitly in
 the output rather than silently guessing wrong.
 
+If a diff handed to you references a path that doesn't match the current tree exactly
+(renamed/moved file, a diff against an older commit), do NOT derail into asking for
+clarification — review the diff's content against the documented rules as given, and
+note the discrepancy in one line under **Not found / could not verify** instead of
+stopping the whole review.
+
 Read the relevant `<module>/INSIGHTS.md` (`server/INSIGHTS.md`, `client/INSIGHTS.md`,
 `reviewer-core/INSIGHTS.md`) for **Codebase Patterns** and **What Doesn't Work** before
 judging — a pattern that looks like a violation may be a documented, intentional
@@ -137,6 +151,8 @@ and `known-violations.json` too).
   confirm a boundary change didn't break types — cite the exact command and result.
 - Record exact `file:line` for every finding. Do not guess about contents — open and
   read them.
+- Quote the offending line(s) **verbatim** (fenced or inline code) as evidence for every
+  finding — a paraphrase of what the line does is not acceptable evidence on its own.
 
 ## Step 4 — Classify findings by severity
 
@@ -145,7 +161,7 @@ output reads consistently with `pr-self-review`:
 
 | Severity | Criteria |
 |----------|----------|
-| **CRITICAL** | A new onion boundary violation (depcruise error), reviewer-core importing forbidden I/O, a port interface declared outside `shared/adapters.ts` that's already load-bearing, shared-contract drift where only one side was updated. |
+| **CRITICAL** | A new onion boundary violation (depcruise error), reviewer-core importing forbidden I/O, reviewer-core skipping or bypassing the mandatory `groundFindings()` gate (`core-grounding-required`), a port interface declared outside `shared/adapters.ts` that's already load-bearing, shared-contract drift where only one side was updated. |
 | **HIGH** | Exploitable/wrong under conditions; strong architectural smell — a service constructing an adapter directly instead of via the container, a documented `AGENTS.md`/`CLAUDE.md` convention violated, a cyclic dependency. |
 | **MEDIUM** | Limited-impact coupling issues, an abstraction-altitude mismatch that doesn't yet cause a bug, a frontend feature importing another feature's internals without a demonstrated production issue. |
 | **LOW** | Defense-in-depth structural suggestions, minor cohesion nits. |
@@ -155,8 +171,10 @@ Report **high-confidence only** — trace exploitability/real impact before labe
 Untuned LLM architecture reviewers over-flag; when in doubt, downgrade severity or omit
 rather than pad the list. Every finding must have: `file`, `line`, `severity`, the
 **architectural principle/rule** it violates (name it, e.g. "service-no-drizzle",
-"module-no-direct-adapter", "core-is-pure" — reuse the `dependency-cruiser.arch.cjs` rule
-names where applicable), **why** it matters, and a concrete **fix**.
+"module-no-direct-adapter", "core-is-pure", "core-no-node-io" — reuse the
+`dependency-cruiser.arch.cjs` rule names where applicable; for the reviewer-core
+grounding gate, use "core-grounding-required"), **why** it matters, and a concrete
+**fix**.
 
 ## Honesty rules
 
@@ -180,9 +198,12 @@ names where applicable), **why** it matters, and a concrete **fix**.
 **Lenses applied:** <onion-architecture | frontend-architecture | next-best-practices | typescript-expert | security — only the ones actually used>
 
 ### Findings (severity-sorted)
-| # | Severity | File:Line | Principle/Rule | Why | Fix |
-|---|----------|-----------|-----------------|-----|-----|
-| 1 | CRITICAL | `path/to/file.ts:42` | service-no-drizzle | … | … |
+| # | Severity | File:Line | Evidence (verbatim) | Principle/Rule | Why | Fix |
+|---|----------|-----------|---------------------|-----------------|-----|-----|
+| 1 | CRITICAL | `path/to/file.ts:42` | `import { db } from '../../db'` | service-no-drizzle | … | … |
+
+The **Evidence** cell is the offending line copied exactly from the file/diff (Step 3) —
+never a description of it.
 
 (If none: "No architectural issues found — evidence: <what was checked>.")
 
@@ -198,6 +219,10 @@ distinct from the itemized findings above.>
 
 ### Out of scope (deferred)
 - <style/bug/test items noticed but deliberately not reported here — or "—">
+
+### Gate verdict
+**PASS** / **FAIL** — FAIL if any CRITICAL or HIGH finding is present above, PASS otherwise.
+This must be the last line of the report.
 ```
 
 ## Design basis & sources

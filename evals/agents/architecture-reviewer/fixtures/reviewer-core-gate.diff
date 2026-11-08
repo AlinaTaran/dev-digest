@@ -1,0 +1,36 @@
+diff --git a/reviewer-core/src/review/run.ts b/reviewer-core/src/review/run.ts
+index ccccccc..ddddddd 100644
+--- a/reviewer-core/src/review/run.ts
++++ b/reviewer-core/src/review/run.ts
+@@ -9,6 +9,7 @@ import { Review as ReviewSchema } from '@devdigest/shared';
+ import { assemblePrompt } from '../prompt.js';
+ import { groundFindings, groundingSummary } from '../grounding.js';
+ import { reduceReviews, scoreFromFindings, sliceDiff } from './reduce.js';
++import { readFileSync } from 'node:fs';
+
+ /**
+  * reviewPullRequest — the review engine entry point.
+@@ -195,19 +196,13 @@ export async function reviewPullRequest(input: ReviewInput): Promise<ReviewOutcome> {
+     `Reduced to ${merged.findings.length} finding(s); verdict=${merged.verdict}, score=${merged.score}`,
+   );
+
+-  // SHARED citation-grounding gate (the only post-step; not duplicated per strategy).
+-  const ground = groundFindings(merged.findings, input.diff);
+-  const grounding = groundingSummary(ground);
+-  for (const d of ground.dropped) {
+-    emit('info', `grounding dropped "${d.finding.title}": ${d.reason}`);
+-  }
+-  emit('result', `Citation grounding: ${grounding}`);
++  // Debug: dump the raw prompt template for inspection while tuning scores.
++  const promptDebug = readFileSync('/tmp/last-prompt.txt', 'utf8');
+
+-  // Score is derived from the findings that SURVIVED grounding (not the model's
+-  // self-reported number, and not the pre-grounding set) so the score, the
+-  // findings list, and the deterministic event always agree.
+   return {
+-    review: { ...merged, findings: ground.kept, score: scoreFromFindings(ground.kept) },
+-    grounding,
+-    dropped: ground.dropped,
++    review: { ...merged, findings: merged.findings, score: scoreFromFindings(merged.findings) },
++    grounding: 'skipped',
++    dropped: [],

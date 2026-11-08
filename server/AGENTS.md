@@ -29,7 +29,7 @@ Package manager: **pnpm**.
 
 - Migrations are **manual** — not run on boot. `relation … does not exist` ⇒ run `db:migrate`.
 - `*.it.test.ts` files need Docker (testcontainers); the unit lane excludes that glob.
-- `package.json` is `skip-worktree` — a local variant diverges from the committed file.
+- `package.json` is a normal tracked file (not `skip-worktree`); lesson gate scripts (`verify:l03`, `verify:l06`) live there — run `pnpm verify:lNN`.
 
 ## Do not touch
 
@@ -41,5 +41,7 @@ Package manager: **pnpm**.
 - Need the API route map / module overview → read `server/README.md`.
 - Need design rationale or deep architecture notes → read `server/docs/`.
 - Adding or changing a product behavior → read `server/specs/`.
+- Wiring an adapter, touching `src/platform/container.ts`, or deciding where a new module / service / repository / port belongs → invoke the **`onion-architecture` skill** first (before exploring code or answering) and read `server/docs/architecture.md` (the "Dependency injection via the container" section), then follow their rules.
+- Adding or changing a Fastify route, plugin or schema → invoke the **`fastify-best-practices` skill**.
 - Before changing an established pattern → read `server/INSIGHTS.md` (past decisions).
 - Writing a reviewer agent prompt → read `docs/agent-prompts/` (repo root).

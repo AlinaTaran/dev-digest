@@ -28,6 +28,15 @@ or a trap someone hit — so the next person (or agent) doesn't relearn it.
   becomes `null` the moment *any* chunk reports `null`, so a partially-unknown cost is
   reported as unknown rather than a misleading partial sum. Don't "fix" this to sum the
   known chunks.
+- **`reviewer-core/tsconfig.json`'s `@devdigest/shared` path alias points at
+  `../server/src/vendor/shared/index.ts`** — reviewer-core has no vendored copy of its own
+  (unlike `client`, which vendors a full copy under `client/src/vendor/shared`). Combined
+  with `server/tsconfig.json`'s `@devdigest/reviewer-core` alias pointing back at
+  `../reviewer-core/src/index.ts`, this makes `server` and `reviewer-core` a **circular
+  internal dependency** (`server → reviewer-core → server`), which contradicts this
+  package's own purity rule ("no import from `server/`"). Found during a dependency audit
+  (2026-11-01); not yet fixed — fixing it means giving reviewer-core its own vendored
+  `shared` contracts, mirrored like client's copy already is.
 
 ## Tool & Library Notes
 

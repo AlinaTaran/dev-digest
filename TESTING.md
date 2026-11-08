@@ -88,9 +88,9 @@ cd e2e && npm install && npm test
   (`vitest run --exclude '**/*.it.test.ts'`); the integration lane selects only
   it (`vitest run .it.test`). A DB-backed test that imports `test/helpers/pg.ts`
   must use the `.it.test.ts` suffix.
-- **`server/package.json` is `skip-worktree`** (a local variant diverges from the
-  committed file). CI therefore invokes the split with
-  `pnpm exec vitest run …` rather than relying on committed `test:unit` /
+- **`server/package.json` is a normal tracked file** (not `skip-worktree`); lesson gate
+  scripts (`verify:l03`, `verify:l06`) live there (`pnpm verify:lNN`). CI invokes the split
+  with `pnpm exec vitest run …` rather than relying on committed `test:unit` /
   `test:integration` scripts.
 - **Hermetic by default.** Reach for `src/adapters/mocks.ts` (MockLLMProvider,
   MockGitClient) rather than real network/keys.

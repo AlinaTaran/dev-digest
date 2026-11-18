@@ -1,0 +1,54 @@
+{
+  "picker": {
+    "trigger": "Run Review",
+    "running": "Running…",
+    "title": "Pick agents to run",
+    "clear": "Clear",
+    "disabledMark": "disabled",
+    "noAgents": "No agents yet — create one",
+    "mergedWarning": "Already merged — review is informational",
+    "mergedTooltip": "This PR is already merged; running a review won’t affect the merged code.",
+    "runOne": "Run review",
+    "runMany": "Run multi-agent review ({count})",
+    "configure": "Configure agents…",
+    "error": "Couldn’t start the review. Try again."
+  },
+  "configure": {
+    "breadcrumb": "Multi-Agent Review",
+    "title": "Configure run",
+    "subtitle": "Pick a pull request and two or more agents to run on it in parallel.",
+    "prLabel": "Pull request",
+    "prPlaceholder": "Select a pull request…",
+    "prOption": "#{number} · {title}",
+    "pickPrTitle": "Pick a pull request first",
+    "pickPrBody": "Choose a pull request above to configure the run.",
+    "noAgentsTitle": "No agents yet",
+    "noAgentsBody": "Create at least two agents to run them side by side.",
+    "noAgentsCta": "Go to Agents",
+    "agentsLabel": "Agents",
+    "selectAll": "Select all",
+    "clear": "Clear",
+    "disabledMark": "disabled",
+    "launch": "Run multi-agent review ({count})",
+    "launchIdle": "Run multi-agent review",
+    "minAgentsHint": "Select at least 2 agents.",
+    "loadError": "Couldn’t load the configuration.",
+    "startError": "Couldn’t start the multi-agent review. Try again."
+  },
+  "recent": {
+    "title": "Recent runs",
+    "subtitle": "The latest multi-agent reviews of this repository.",
+    "newRun": "New multi-agent review",
+    "emptyTitle": "No multi-agent reviews yet",
+    "emptyBody": "Run several agents on a pull request in parallel and compare their findings.",
+    "emptyCta": "Start your first multi-agent review",
+    "loadError": "Couldn’t load recent runs.",
+    "agents": "{count, plural, one {# agent} other {# agents}}",
+    "ago": "{time} ago",
+    "justNow": "just now"
+  },
+  "estimate": {
+    "unknown": "—",
+    "total": "≈ {duration} · {cost} · parallel fan-out"
+  }
+}

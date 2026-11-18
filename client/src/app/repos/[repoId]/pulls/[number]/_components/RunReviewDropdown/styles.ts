@@ -1,6 +1,54 @@
 import type { CSSProperties } from "react";
 
-/** Co-located styles for RunReviewDropdown. This component renders only library
-   primitives (Button/Dropdown) and has no inline styles; the map is kept for
-   convention parity and future use. */
-export const s = {} satisfies Record<string, CSSProperties>;
+/** Co-located styles for RunReviewDropdown. */
+export const s = {
+  root: { position: "relative", display: "inline-block" } satisfies CSSProperties,
+  popover: {
+    position: "absolute",
+    top: "calc(100% + 6px)",
+    right: 0,
+    background: "var(--bg-elevated)",
+    border: "1px solid var(--border-strong)",
+    borderRadius: 9,
+    boxShadow: "var(--shadow-modal)",
+    padding: 8,
+    zIndex: 40,
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
+  } satisfies CSSProperties,
+  header: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "2px 4px" } satisfies CSSProperties,
+  title: { fontSize: 12, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase" } satisfies CSSProperties,
+  warning: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "6px 8px",
+    fontSize: 13,
+    color: "var(--text-secondary)",
+  } satisfies CSSProperties,
+  row: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    padding: "6px 8px",
+    borderRadius: 6,
+    fontSize: 14,
+    cursor: "pointer",
+    color: "var(--text-primary)",
+  } satisfies CSSProperties,
+  rowName: { flex: 1, fontWeight: 500 } satisfies CSSProperties,
+  rowHint: { fontSize: 12, color: "var(--text-muted)" } satisfies CSSProperties,
+  divider: { height: 1, background: "var(--border)", margin: "2px 0" } satisfies CSSProperties,
+  total: { fontSize: 12, color: "var(--text-secondary)", padding: "0 4px" } satisfies CSSProperties,
+  error: { fontSize: 12, color: "var(--crit)", padding: "0 4px" } satisfies CSSProperties,
+  link: {
+    background: "transparent",
+    border: "none",
+    textAlign: "left",
+    padding: "6px 8px",
+    fontSize: 13,
+    color: "var(--text-secondary)",
+    cursor: "pointer",
+  } satisfies CSSProperties,
+} as const;

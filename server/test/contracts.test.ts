@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   Review,
+  CiResultArtifact,
+  CiExportInput,
+  CiPreviewInput,
   Finding,
   Intent,
   BlastRadius,
@@ -518,5 +521,44 @@ describe('PrBrief contract', () => {
       current_head_sha: 'abc',
     };
     expect(PrBriefResponse.parse(r)).toEqual(r);
+  });
+});
+
+describe('CI contracts', () => {
+  const artifact = {
+    schema_version: 1,
+    status: 'succeeded',
+    reason: null,
+    verdict: 'comment',
+    findings_count: 2,
+    critical: 1,
+    warning: 1,
+    suggestion: 0,
+    blockers: 1,
+    cost_usd: null,
+    duration_ms: 1200,
+    agent: 'Security Reviewer',
+    model: 'openai/gpt-4.1',
+    runner_version: '1.0.0',
+    pr_number: 7,
+  };
+
+  it('CiResultArtifact accepts a full result and rejects bad ones', () => {
+    expect(CiResultArtifact.parse(artifact)).toEqual(artifact);
+    const { schema_version: _v, ...noVersion } = artifact;
+    expect(CiResultArtifact.safeParse(noVersion).success).toBe(false);
+    expect(CiResultArtifact.safeParse({ ...artifact, critical: -1 }).success).toBe(false);
+    expect(CiResultArtifact.safeParse({ ...artifact, pr_number: undefined }).success).toBe(false);
+  });
+
+  it('CiExportInput defaults, drops base, rejects empty triggers and bad repo', () => {
+    const ok = CiExportInput.parse({ repo: 'acme/payments-api', base: 'main' });
+    expect(ok).toMatchObject({ action: 'open_pr', post_as: 'github_review', target: 'gha' });
+    expect(ok.triggers).toEqual(['opened', 'synchronize']);
+    expect('base' in ok).toBe(false);
+    expect(CiExportInput.safeParse({ repo: 'acme/x', triggers: [] }).success).toBe(false);
+    expect(CiExportInput.safeParse({ repo: 'not a repo' }).success).toBe(false);
+    expect(CiExportInput.safeParse({ repo: 'acme/x', action: 'files' }).success).toBe(false);
+    expect(CiPreviewInput.safeParse({ repo: 'acme/x', triggers: ['bogus'] }).success).toBe(false);
   });
 });

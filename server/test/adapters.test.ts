@@ -32,6 +32,30 @@ describe('mock adapters (no network)', () => {
     expect(url).toContain('github.com');
   });
 
+  it('MockGitHubClient serves workflow runs / artifacts and injects errors', async () => {
+    const repo = { owner: 'a', name: 'b' };
+    const bytes = new Uint8Array([1, 2, 3]);
+    const run = { id: 9, run_attempt: 1, html_url: 'u', created_at: 't', conclusion: 'success' };
+    const gh = new MockGitHubClient({
+      workflowRuns: { 'a/b:w.yml': [run] },
+      artifacts: { 9: bytes, 10: null },
+      errors: {
+        commitFiles: new Error('403 forbidden'),
+        listWorkflowRuns: { 'x/y': new Error('boom') },
+      },
+    });
+    expect(await gh.listWorkflowRuns(repo, 'w.yml')).toEqual([run]);
+    expect(await gh.listWorkflowRuns(repo, 'other.yml')).toEqual([]);
+    expect(gh.listedWorkflows).toEqual(['a/b:w.yml', 'a/b:other.yml']);
+    expect(await gh.downloadArtifact(repo, 9, 'devdigest-result')).toBe(bytes);
+    expect(await gh.downloadArtifact(repo, 10, 'devdigest-result')).toBeNull();
+    expect(gh.downloads).toEqual([9, 10]);
+    await expect(gh.listWorkflowRuns({ owner: 'x', name: 'y' }, 'w.yml')).rejects.toThrow('boom');
+    await expect(
+      gh.commitFiles(repo, { branch: 'b', base: 'main', message: 'm', files: [] }),
+    ).rejects.toThrow('403');
+  });
+
   it('MockCodeIndex + MockEmbedder return deterministic shapes', async () => {
     const ci = new MockCodeIndex();
     expect((await ci.symbols({ owner: 'a', name: 'b' }))[0]!.name).toBe('rateLimit');

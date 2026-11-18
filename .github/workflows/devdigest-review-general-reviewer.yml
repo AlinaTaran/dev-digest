@@ -8,6 +8,7 @@ permissions:
 jobs:
   review:
     runs-on: ubuntu-latest
+    if: github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
         with:
@@ -16,12 +17,16 @@ jobs:
         with:
           node-version: 22
       - name: DevDigest review
-        run: node .devdigest/runner/agent-runner.cjs
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DEVDIGEST_AGENT: general-reviewer
           DEVDIGEST_POST_AS: pr_comment
+          DEVDIGEST_DIR: ${{ runner.temp }}/devdigest
+        run: |
+          mkdir -p "$DEVDIGEST_DIR/agents" "$DEVDIGEST_DIR/skills"
+          cp .devdigest/agents/general-reviewer.yaml "$DEVDIGEST_DIR/agents/"
+          cp -r .devdigest/skills/. "$DEVDIGEST_DIR/skills/" || true
+          node .devdigest/runner/index.js
       - name: Upload DevDigest result
         if: always()
         uses: actions/upload-artifact@v4

@@ -63,6 +63,7 @@ export class ReviewRunExecutor {
     repo: typeof schema.repos.$inferSelect,
     jobs: { agent: AgentRow; runId: string }[],
     logger?: Logger,
+    opts?: { parallel?: boolean },
   ): Promise<void> {
     // ONE logger fanned out over every queued run: shared pre-work (diff +
     // intent) is streamed into each target agent's Live Log and persisted into
@@ -125,7 +126,7 @@ export class ReviewRunExecutor {
       intentText = undefined;
     }
 
-    for (const { agent, runId } of jobs) {
+    const runJob = async ({ agent, runId }: { agent: AgentRow; runId: string }) => {
       const agentStart = Date.now();
       logger?.info(
         { runId, agent: agent.name, provider: agent.provider, model: agent.model, prId: pull.id },
@@ -152,7 +153,15 @@ export class ReviewRunExecutor {
           `review: agent "${agent.name}" ${cancelled ? 'cancelled' : 'failed'}`,
         );
       }
+    };
+
+    // Opt-in fan-out (multi-agent runs). The default stays sequential so
+    // POST /pulls/:id/review behaves exactly as before.
+    if (opts?.parallel) {
+      await Promise.allSettled(jobs.map(runJob));
+      return;
     }
+    for (const job of jobs) await runJob(job);
   }
 
   /** Execute a single agent's review against a PR, streaming progress. */

@@ -15,10 +15,12 @@ on:
     branches: [main]
     paths:
       - 'server/**'
+      - 'agent-runner/**'
       - '.github/workflows/server-integration.yml'
   pull_request:
     paths:
       - 'server/**'
+      - 'agent-runner/**'
       - '.github/workflows/server-integration.yml'
 
 permissions:
@@ -56,6 +58,17 @@ jobs:
       - name: Install reviewer-core deps
         working-directory: reviewer-core
         run: npm ci
+
+      # The CI export ships agent-runner's ncc bundle (agent-runner/dist/, gitignored);
+      # the export tests read it and fail with `runner_not_built` otherwise. Also gates
+      # the runner's own typecheck + hermetic tests, which the server contract feeds.
+      - name: Build agent-runner
+        working-directory: agent-runner
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm typecheck
+          pnpm test
+          pnpm build
 
       # Inlined rather than `pnpm test:integration`: server/package.json is
       # skip-worktree, so we don't rely on the committed file carrying the split

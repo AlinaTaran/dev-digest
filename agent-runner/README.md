@@ -11,7 +11,7 @@ executed by the target repo's workflow as `node .devdigest/runner/index.js`.
 ## What it does
 
 1. **Loads + validates** the checked-in manifest `.devdigest/agents/<slug>.yaml`
-   and skill bodies `.devdigest/skills/*.md` from the target repo's working tree
+   and skill bodies `.devdigest/skills/*.md` (plus the optional `.devdigest/memory.jsonl` rules) from the target repo's working tree
    (validated against `AgentManifest` before use).
 2. **Resolves the PR context** (owner / repo / number / title / body / fork flag)
    from CI env vars + the `pull_request` event payload.
@@ -108,8 +108,9 @@ posted comment.
 - `1` — gate triggered `REQUEST_CHANGES`, **or** a hard failure anywhere in the
   pipeline (invalid manifest, missing skill file, unresolvable CI context,
   diff-fetch error, or an LLM/model-call error). On hard failure the runner posts
-  nothing and writes no artifact — a failure upstream of "we have a grounded
-  review" produces **nothing**, never a synthetic review.
+  nothing to the PR and writes only a `status: "failed"` artifact (no findings, a short `reason`)
+  so the studio can show that the run failed — a failure upstream of "we have a grounded
+  review" never produces a synthetic review.
 
 ## Invariants (do not break)
 

@@ -3,10 +3,11 @@ import type { LLMProvider, GitHubReviewPayload, CiResultArtifact } from '@devdig
 import { reviewPullRequest, toReviewPayload, gateTriggered, countBlockers } from '@devdigest/reviewer-core';
 import { loadManifest } from './manifest.js';
 import { loadSkillBodies } from './skills.js';
+import { loadMemory } from './memory.js';
 import { resolvePrContext, type CiEnv } from './context.js';
 import { parseUnifiedDiff, stripIgnoredFiles } from './diff.js';
 import { fetchPrDiff, postGithubReview, postPrComment, type FetchLike } from './github.js';
-import { buildResultArtifact } from './artifact.js';
+import { buildFailedArtifact, buildResultArtifact } from './artifact.js';
 import { RunnerError } from './errors.js';
 
 /**
@@ -27,9 +28,13 @@ import { RunnerError } from './errors.js';
  * invalid manifest (AC-20), missing skill file, unresolvable CI context,
  * diff-fetch failure, or an LLM/model-call error inside `reviewPullRequest` —
  * short-circuits to `{ exitCode: 1, artifact: null, posted: null }` before any
- * GitHub post or artifact write. Do not add per-stage catches that post partial
- * state; the whole point is that a failure anywhere upstream of "we have a
- * grounded review" produces NOTHING (no synthetic review skeleton).
+ * GitHub post. Do not add per-stage catches that post partial state; a failure
+ * anywhere upstream of "we have a grounded review" posts NOTHING (no synthetic
+ * review skeleton). The only thing written is a `failed` result artifact (no
+ * findings, a short `reason`) so the studio can show that — and why — the run
+ * failed instead of the run silently never appearing. It is written only when
+ * no result artifact exists yet, so a GitHub posting failure after a completed
+ * review never overwrites the real result.
  */
 
 export type PostAs = 'github_review' | 'pr_comment' | 'none';
@@ -88,13 +93,24 @@ export async function runCi(deps: RunCiDeps): Promise<RunCiResult> {
   const fetchImpl = deps.fetchImpl ?? fetch;
   const fetchDiffImpl = deps.fetchDiff ?? fetchPrDiff;
 
+  // What the `failed` artifact reports; refined as the pipeline learns more.
+  const startedAt = now();
+  let agent = 'unknown';
+  let model = 'unknown';
+  let prNumber: number | null = null;
+  let artifactWritten = false;
+
   try {
     // 1. Load + validate the manifest BEFORE it is used for anything (AC-20).
     const manifest = loadManifest(deps.devdigestDir, { readFile, readDir });
+    agent = manifest.name;
+    model = manifest.model;
     const skills = loadSkillBodies(deps.devdigestDir, manifest.skills, readFile);
+    const memory = loadMemory(deps.devdigestDir, readFile);
 
     // 2. Resolve CI context (PR number/title/body/repo) from env + event payload.
     const ctx = resolvePrContext(deps.env, readFile);
+    prNumber = ctx.prNumber;
 
     const githubToken = deps.env.GITHUB_TOKEN;
     if (deps.postAs !== 'none' && !githubToken) {
@@ -122,6 +138,7 @@ export async function runCi(deps: RunCiDeps): Promise<RunCiResult> {
       llm: deps.llm,
       strategy: manifest.strategy,
       skills,
+      memory,
       prDescription: ctx.body,
       task: `Review PR #${ctx.prNumber}: ${ctx.title}`,
     });
@@ -144,9 +161,13 @@ export async function runCi(deps: RunCiDeps): Promise<RunCiResult> {
       costUsd: outcome.costUsd,
       durationMs,
       agent: manifest.name,
+      model: manifest.model,
       prNumber: ctx.prNumber,
+      blockers,
+      verdict: outcome.review.verdict,
     });
     writeFile(deps.resultPath, `${JSON.stringify(artifact, null, 2)}\n`);
+    artifactWritten = true;
 
     // 7. Post per `post_as` (AC-24).
     if (deps.postAs === 'github_review') {
@@ -165,9 +186,30 @@ export async function runCi(deps: RunCiDeps): Promise<RunCiResult> {
       gateTriggered: triggered,
     };
   } catch (err) {
-    // Hard-fail (Q5): non-zero exit, nothing posted, no artifact, no synthetic
-    // review skeleton — regardless of which stage above threw.
+    // Hard-fail (Q5): non-zero exit, nothing posted, no synthetic review
+    // skeleton — regardless of which stage above threw.
     const message = err instanceof Error ? err.message : String(err);
+    if (!artifactWritten) {
+      try {
+        // The failure may predate PR-context resolution; try once more so the
+        // studio can attach the run to the right PR (best effort — falls back to 1).
+        prNumber ??= resolvePrContext(deps.env, readFile).prNumber;
+      } catch {
+        // keep the fallback
+      }
+      try {
+        const failed = buildFailedArtifact({
+          reason: message,
+          durationMs: now() - startedAt,
+          agent,
+          model,
+          prNumber: prNumber ?? 1,
+        });
+        writeFile(deps.resultPath, `${JSON.stringify(failed, null, 2)}\n`);
+      } catch {
+        // Best effort: never mask the real failure with an artifact-write error.
+      }
+    }
     return { exitCode: 1, artifact: null, posted: null, error: message };
   }
 }

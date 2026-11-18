@@ -195,7 +195,7 @@ describe('runCi (T8 agent-runner orchestrator)', () => {
     };
   }
 
-  it('AC-20: fails clearly (non-zero exit, no artifact) when the manifest is invalid, before any LLM call is made', async () => {
+  it('AC-20: fails clearly (non-zero exit, only a `failed` artifact) when the manifest is invalid, before any LLM call is made', async () => {
     writeFileSync(
       path.join(dir, 'agents', 'security-reviewer.yaml'),
       'name: "bad"\nmodel: "m"\nsystem_prompt: "p"\nci_fail_on: "sometimes"\n',
@@ -207,7 +207,10 @@ describe('runCi (T8 agent-runner orchestrator)', () => {
     expect(result.artifact).toBeNull();
     expect(result.error).toMatch(/failed validation/i);
     expect(stub.capturedMessages).toHaveLength(0); // never reached the LLM
-    expect(existsSync(resultPath)).toBe(false);
+    // The studio still learns the run failed — and for which PR, resolved even though the manifest threw first.
+    const failed = CiResultArtifactSchema.parse(JSON.parse(readFileSync(resultPath, 'utf8')));
+    expect(failed).toMatchObject({ status: 'failed', findings_count: 0, blockers: 0, verdict: null, pr_number: 42 });
+    expect(failed.reason).toMatch(/failed validation/i);
   });
 
   it('AC-21: the assembled prompt fences the diff and PR body as <untrusted> and carries the injection guard', async () => {
@@ -314,9 +317,19 @@ describe('runCi (T8 agent-runner orchestrator)', () => {
     expect(artifact.critical).toBe(1);
     expect(artifact.pr_number).toBe(42);
     expect(artifact.agent).toBe('Security Reviewer');
+    // Fields the studio's ingest consumes (no server-side guessing).
+    expect(artifact).toMatchObject({
+      schema_version: 1,
+      status: 'succeeded',
+      reason: null,
+      model: 'deepseek/deepseek-v4-flash',
+      blockers: result.blockers,
+    });
+    expect(artifact.runner_version).toMatch(/^agent-runner@/);
+    expect(artifact.verdict).not.toBeNull();
   });
 
-  it('Q5: an LLM/model-call error hard-fails — non-zero exit, error status, nothing posted, no artifact, no synthetic review', async () => {
+  it('Q5: an LLM/model-call error hard-fails — non-zero exit, nothing posted, no synthetic review, only a `failed` artifact', async () => {
     const stub = makeStubLlm('throw');
     const { fetchImpl, calls } = makeFetchRecorder();
     const result = await runCi(
@@ -328,7 +341,40 @@ describe('runCi (T8 agent-runner orchestrator)', () => {
     expect(result.posted).toBeNull();
     expect(result.error).toMatch(/simulated model\/network failure/);
     expect(calls).toHaveLength(0); // nothing posted to the PR
-    expect(existsSync(resultPath)).toBe(false); // no artifact written
+    // No review artifact — just the `failed` marker carrying the reason.
+    const failed = CiResultArtifactSchema.parse(JSON.parse(readFileSync(resultPath, 'utf8')));
+    expect(failed).toMatchObject({ status: 'failed', findings_count: 0, pr_number: 42, agent: 'Security Reviewer' });
+    expect(failed.reason).toMatch(/simulated model\/network failure/);
+  });
+
+  it('a GitHub posting failure AFTER a completed review keeps the real result artifact (never overwritten by `failed`)', async () => {
+    const stub = makeStubLlm(GROUNDED_PLUS_HALLUCINATED_REVIEW);
+    const failingPost = (async () => new Response('boom', { status: 500 })) as unknown as FetchLike;
+    const result = await runCi(
+      baseDeps({ llm: stub.llm, fetchDiff: async () => FIXTURE_DIFF_RAW, fetchImpl: failingPost }),
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(result.error).toMatch(/posting review/);
+    const onDisk = CiResultArtifactSchema.parse(JSON.parse(readFileSync(resultPath, 'utf8')));
+    expect(onDisk.status).toBe('succeeded');
+    expect(onDisk.findings_count).toBe(1);
+  });
+
+  it('memory.jsonl rules reach the prompt; broken lines are skipped', async () => {
+    writeFileSync(
+      path.join(dir, 'memory.jsonl'),
+      [
+        JSON.stringify({ kind: 'fact', scope: 'global', content: 'always prefer pnpm over npm' }),
+        'not json',
+        JSON.stringify({ content: '' }),
+      ].join('\n') + '\n',
+    );
+    const stub = makeStubLlm(GROUNDED_PLUS_HALLUCINATED_REVIEW);
+    const result = await runCi(baseDeps({ llm: stub.llm, fetchDiff: async () => FIXTURE_DIFF_RAW }));
+
+    expect(result.error).toBeUndefined();
+    expect(JSON.stringify(stub.capturedMessages)).toContain('always prefer pnpm over npm');
   });
 
   it('AC-36: parity — the runner\'s posted payload matches a direct local reviewPullRequest + toReviewPayload run on the same diff + deterministic model output', async () => {

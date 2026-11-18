@@ -27,3 +27,11 @@ describe("eval nav (AC-59)", () => {
     expect(lab.items.find((i) => i.key === "eval")?.href).toBe("/eval");
   });
 });
+
+describe("CI Runs nav (AC-86)", () => {
+  it("registers CI Runs in a GLOBAL section linking to /ci-runs and highlights it there", () => {
+    const global = NAV.find((g) => g.section === "GLOBAL")!;
+    expect(global.items.find((i) => i.key === "ci-runs")?.href).toBe("/ci-runs");
+    expect(activeKeyFor("/ci-runs")).toBe("ci-runs");
+  });
+});

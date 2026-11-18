@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useCallback } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { Icon, Avatar, Badge, Button, Tabs } from "@devdigest/ui";
+import { useMultiAgentRun } from "@/lib/hooks/multi-agent-run";
 import { RunReviewDropdown } from "../RunReviewDropdown/RunReviewDropdown";
 import { s } from "./styles";
 import type { PrDetail } from "@/lib/types";
@@ -28,6 +30,12 @@ export function PrDetailHeader({
   onRunStart,
   onRunsStarted,
 }: PrDetailHeaderProps) {
+  const params = useParams<{ repoId: string }>();
+  const router = useRouter();
+  // The PR's latest multi-agent run, if any (404 = none yet → no link).
+  const multiRun = useMultiAgentRun(prId);
+  const hasMultiRun = !!multiRun.data;
+
   const handleRunStart = useCallback(() => {
     onRunStart();
   }, [onRunStart]);
@@ -89,6 +97,16 @@ export function PrDetailHeader({
           >
             View on GitHub
           </Button>
+          {hasMultiRun && (
+            <Button
+              kind="ghost"
+              size="sm"
+              icon="Layers"
+              onClick={() => router.push(`/repos/${params.repoId}/multi-agent/${pr.number}`)}
+            >
+              Multi-agent results
+            </Button>
+          )}
           {prId && (
             <RunReviewDropdown
               prId={prId}

@@ -1,0 +1,50 @@
+{
+  "title": "Multi-Agent Review",
+  "backToRecent": "Back to recent runs",
+  "summary": "{count, plural, one {# agent} other {# agents}} · fan-out · {seconds}s total · {cost}",
+  "mode": {
+    "tabs": "Tabs",
+    "columns": "Columns"
+  },
+  "status": {
+    "running": "Running",
+    "done": "Done",
+    "failed": "Failed",
+    "cancelled": "Cancelled"
+  },
+  "column": {
+    "score": "Score {score}",
+    "verdict": "Verdict: {verdict}",
+    "noFindings": "No findings — looks clean",
+    "noReason": "No reason recorded",
+    "viewTrace": "View trace",
+    "duration": "{seconds}s",
+    "tabLabel": "{name}",
+    "reviewing": "Agent is reviewing…",
+    "reviewingHint": "Findings appear here as soon as this agent finishes."
+  },
+  "finding": {
+    "alsoFoundBy": "Also found by: {agents}",
+    "learn": "Learn",
+    "learnHint": "Available with Memory"
+  },
+  "disagree": {
+    "title": "Where agents disagree",
+    "onlyConflicts": "Show only conflicts",
+    "empty": "No overlapping findings between agents.",
+    "agents": "Flagged by {agents}",
+    "didNotFlag": "did not flag",
+    "flagged": "{severity}",
+    "accept": "Accept all",
+    "dismiss": "Dismiss all"
+  },
+  "empty": {
+    "noRunTitle": "No multi-agent run yet",
+    "noRunBody": "Start a multi-agent review for this pull request.",
+    "configure": "Configure run",
+    "notFoundTitle": "Pull request not found",
+    "notFoundBody": "PR #{number} is not in this repository."
+  },
+  "subtitle": "{count, plural, one {# selected agent} other {# selected agents}} · parallel",
+  "configure": "Configure run"
+}

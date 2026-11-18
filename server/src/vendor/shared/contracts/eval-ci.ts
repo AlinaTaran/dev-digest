@@ -141,6 +141,8 @@ export const CiFile = z.object({
   path: z.string(),
   contents: z.string(),
   editable: z.boolean().default(true),
+  /** Runner bundle version; set only for the runner file (its `contents` is empty in previews). */
+  version: z.string().nullish(),
 });
 export type CiFile = z.infer<typeof CiFile>;
 
@@ -173,15 +175,37 @@ export type AgentManifest = z.infer<typeof AgentManifest>;
 /** Caller-facing input type — `.default()` fields stay optional. */
 export type AgentManifestInput = z.input<typeof AgentManifest>;
 
+/** `owner/name` — same shape the connected-repo lookup expects. */
+const CiRepo = z.string().regex(/^[\w.-]+\/[\w.-]+$/);
+
+export const CiTriggerEvent = z.enum(['opened', 'synchronize', 'reopened']);
+export type CiTriggerEvent = z.infer<typeof CiTriggerEvent>;
+
+export const CiPostAs = z.enum(['github_review', 'pr_comment', 'none']);
+export type CiPostAs = z.infer<typeof CiPostAs>;
+
+/** Request body for `POST /agents/:id/ci/preview`. */
+export const CiPreviewInput = z.object({
+  repo: CiRepo,
+  triggers: z.array(CiTriggerEvent).min(1).default(['opened', 'synchronize']),
+  post_as: CiPostAs.default('github_review'),
+});
+export type CiPreviewInput = z.infer<typeof CiPreviewInput>;
+
+/** Response of `POST /agents/:id/ci/preview`. */
+export const CiPreview = z.object({ files: z.array(CiFile) });
+export type CiPreview = z.infer<typeof CiPreview>;
+
 /** Request body for `POST /agents/:id/export-ci`. */
 export const CiExportInput = z.object({
-  repo: z.string().min(1), // "owner/name"
-  target: CiTarget.default('gha'),
-  /** "open_pr" opens a PR with the files; "files" just returns/persists them. */
-  action: z.enum(['open_pr', 'files']).default('open_pr'),
-  post_as: z.enum(['github_review', 'pr_comment', 'none']).default('github_review'),
-  triggers: z.array(z.string()).default(['opened', 'synchronize', 'reopened']),
-  base: z.string().default('main'),
+  repo: CiRepo,
+  target: z.literal('gha').default('gha'),
+  /** "open_pr" opens a PR with the files; "zip" returns an archive and touches no GitHub. */
+  action: z.enum(['open_pr', 'zip']).default('open_pr'),
+  post_as: CiPostAs.default('github_review'),
+  triggers: z.array(CiTriggerEvent).min(1).default(['opened', 'synchronize']),
+  /** Hand-edited workflow YAML that replaces the generated one. */
+  workflow_override: z.string().max(100_000).optional(),
 });
 export type CiExportInput = z.infer<typeof CiExportInput>;
 /** Caller-facing input type — `.default()` fields stay optional (web hooks). */
@@ -205,17 +229,24 @@ export const CiExport = z.object({
 });
 export type CiExport = z.infer<typeof CiExport>;
 
-export const CiRunStatus = z.enum(['succeeded', 'failed', 'no_findings', 'running']);
+export const CiRunStatus = z.enum(['succeeded', 'failed', 'no_findings', 'running', 'skipped']);
 export type CiRunStatus = z.infer<typeof CiRunStatus>;
 
 /** A CI run row (mirrors `ci_runs`) — ingested from GitHub Actions artifacts. */
 export const CiRun = z.object({
   id: z.string(),
   ci_installation_id: z.string().nullable(),
+  repo: z.string().nullable(),
+  agent_id: z.string().nullable(),
   pr_number: z.number().int().nullable(),
   ran_at: z.string().nullable(),
   status: z.string().nullable(),
+  verdict: Verdict.nullable(),
   findings_count: z.number().int().nullable(),
+  critical: z.number().int().nullable(),
+  warning: z.number().int().nullable(),
+  suggestion: z.number().int().nullable(),
+  run_attempt: z.number().int().nullable(),
   cost_usd: z.number().nullable(),
   github_url: z.string().nullable(),
   source: z.string().nullable(),
@@ -224,20 +255,54 @@ export const CiRun = z.object({
 });
 export type CiRun = z.infer<typeof CiRun>;
 
+/** An installation as shown on the agent's CI tab (with its latest runs). */
+export const AgentCiInstallation = CiInstallation.extend({
+  workflow_file: z.string(),
+  runner_version: z.string(),
+  pr_url: z.string().nullable(),
+  recent_runs: z.array(CiRun),
+});
+export type AgentCiInstallation = z.infer<typeof AgentCiInstallation>;
+
+/** Response of `GET /agents/:id/ci`. */
+export const AgentCi = z.object({
+  ci_fail_on: CiFailOn,
+  installations: z.array(AgentCiInstallation),
+});
+export type AgentCi = z.infer<typeof AgentCi>;
+
+/** Response of `GET /ci/runs`. */
+export const CiRunsList = z.object({ items: z.array(CiRun) });
+export type CiRunsList = z.infer<typeof CiRunsList>;
+
+/** Response of `POST /ci/runs/refresh`. */
+export const CiRefreshResult = z.object({
+  ingested: z.number().int(),
+  errors: z.array(z.object({ repo: z.string(), reason: z.string() })),
+});
+export type CiRefreshResult = z.infer<typeof CiRefreshResult>;
+
 /**
  * The artifact shape uploaded by the CI action (`devdigest-result.json`).
  * Ingested back on refresh to populate `ci_runs` (L06).
  */
 export const CiResultArtifact = z.object({
-  findings_count: z.number().int(),
-  critical: z.number().int().nullish(),
-  warning: z.number().int().nullish(),
-  suggestion: z.number().int().nullish(),
+  schema_version: z.literal(1),
+  status: z.enum(['succeeded', 'no_findings', 'failed', 'skipped']),
+  reason: z.string().max(2000).nullable(),
+  verdict: Verdict.nullable(),
+  findings_count: z.number().int().min(0),
+  critical: z.number().int().min(0).nullish(),
+  warning: z.number().int().min(0).nullish(),
+  suggestion: z.number().int().min(0).nullish(),
+  blockers: z.number().int().min(0),
   cost_usd: z.number().nullable(),
-  duration_ms: z.number().int().nullish(),
-  agent: z.string(),
+  duration_ms: z.number().int().min(0).nullish(),
+  agent: z.string().max(200),
+  model: z.string().max(200),
+  runner_version: z.string().max(50),
   version: z.string().nullish(),
-  pr_number: z.number().int().nullish(),
+  pr_number: z.number().int().positive(),
 });
 export type CiResultArtifact = z.infer<typeof CiResultArtifact>;
 

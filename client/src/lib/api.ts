@@ -18,7 +18,8 @@ export class ApiError extends Error {
   }
 }
 
-export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+/** fetch + error normalization shared by `apiFetch` (JSON) and `postBlob` (binary). */
+async function request(path: string, init?: RequestInit): Promise<Response> {
   let res: Response;
   try {
     res = await fetch(`${API_BASE}${path}`, {
@@ -57,7 +58,11 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     }
     throw new ApiError(message, res.status, code, details);
   }
+  return res;
+}
 
+export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await request(path, init);
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }
@@ -71,4 +76,7 @@ export const api = {
   patch: <T>(path: string, body?: unknown) =>
     apiFetch<T>(path, { method: "PATCH", body: body ? JSON.stringify(body) : undefined }),
   del: <T>(path: string) => apiFetch<T>(path, { method: "DELETE" }),
+  /** POST a JSON body and read the response as a binary Blob (e.g. a zip download). */
+  postBlob: async (path: string, body?: unknown): Promise<Blob> =>
+    (await request(path, { method: "POST", body: body ? JSON.stringify(body) : undefined })).blob(),
 };

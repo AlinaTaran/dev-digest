@@ -17,6 +17,7 @@ import type {
   OpenPrPayload,
   CommitFilesPayload,
   IssueMeta,
+  WorkflowRunMeta,
   GitClient,
   CloneOptions,
   UnifiedDiff,
@@ -130,6 +131,17 @@ export interface MockGitHubOptions {
   login?: string;
   /** Existing inline review comments returned by listReviewComments. */
   comments?: PrReviewComment[];
+  /** Completed workflow runs, keyed `"owner/name:workflowFile"`. */
+  workflowRuns?: Record<string, WorkflowRunMeta[]>;
+  /** Artifact zip bytes by workflow run id; `null` = absent/expired. */
+  artifacts?: Record<number, Uint8Array | null>;
+  /** Errors to throw instead of the normal result. */
+  errors?: {
+    commitFiles?: Error;
+    openPullRequest?: Error;
+    /** Keyed `"owner/name"`. */
+    listWorkflowRuns?: Record<string, Error>;
+  };
 }
 
 export class MockGitHubClient implements GitHubClient {
@@ -137,6 +149,10 @@ export class MockGitHubClient implements GitHubClient {
   public openedPrs: OpenPrPayload[] = [];
   public committed: CommitFilesPayload[] = [];
   public createdComments: CreateReviewCommentInput[] = [];
+  /** Run ids passed to `downloadArtifact`, in call order. */
+  public downloads: number[] = [];
+  /** `"owner/name:workflowFile"` keys passed to `listWorkflowRuns`, in call order. */
+  public listedWorkflows: string[] = [];
 
   constructor(private opts: MockGitHubOptions = {}) {}
 
@@ -221,11 +237,13 @@ export class MockGitHubClient implements GitHubClient {
   }
 
   async openPullRequest(_repo: RepoRef, payload: OpenPrPayload): Promise<{ url: string }> {
+    if (this.opts.errors?.openPullRequest) throw this.opts.errors.openPullRequest;
     this.openedPrs.push(payload);
     return { url: 'https://github.com/mock/mock/pull/1' };
   }
 
   async commitFiles(_repo: RepoRef, payload: CommitFilesPayload): Promise<{ branch: string }> {
+    if (this.opts.errors?.commitFiles) throw this.opts.errors.commitFiles;
     this.committed.push(payload);
     return { branch: payload.branch };
   }
@@ -233,6 +251,19 @@ export class MockGitHubClient implements GitHubClient {
   async findOpenPr(_repo: RepoRef, branch: string): Promise<{ url: string } | null> {
     const pr = this.openedPrs.find((p) => p.head === branch);
     return pr ? { url: 'https://github.com/mock/mock/pull/1' } : null;
+  }
+
+  async listWorkflowRuns(repo: RepoRef, workflowFile: string): Promise<WorkflowRunMeta[]> {
+    const slug = `${repo.owner}/${repo.name}`;
+    this.listedWorkflows.push(`${slug}:${workflowFile}`);
+    const err = this.opts.errors?.listWorkflowRuns?.[slug];
+    if (err) throw err;
+    return this.opts.workflowRuns?.[`${slug}:${workflowFile}`] ?? [];
+  }
+
+  async downloadArtifact(_repo: RepoRef, runId: number, _name: string): Promise<Uint8Array | null> {
+    this.downloads.push(runId);
+    return this.opts.artifacts?.[runId] ?? null;
   }
 
   async getIssue(_repo: RepoRef, n: number): Promise<IssueMeta> {

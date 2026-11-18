@@ -140,6 +140,15 @@ export interface CommitFilesPayload {
   files: CommitFile[];
 }
 
+/** One completed GitHub Actions workflow run (the subset the CI ingest needs). */
+export interface WorkflowRunMeta {
+  id: number;
+  run_attempt: number;
+  html_url: string;
+  created_at: string;
+  conclusion: string | null;
+}
+
 export interface GitHubClient {
   listPullRequests(repo: RepoRef): Promise<PrMeta[]>;
   getPullRequest(repo: RepoRef, n: number): Promise<PrDetail>;
@@ -161,6 +170,14 @@ export interface GitHubClient {
   commitFiles(repo: RepoRef, payload: CommitFilesPayload): Promise<{ branch: string }>;
   /** The open PR whose head is `branch`, if any (so re-publish reuses it). */
   findOpenPr(repo: RepoRef, branch: string): Promise<{ url: string } | null>;
+  /** Completed runs of one workflow file (newest first). */
+  listWorkflowRuns(
+    repo: RepoRef,
+    workflowFile: string,
+    opts?: { perPage?: number },
+  ): Promise<WorkflowRunMeta[]>;
+  /** Zip bytes of the named artifact of a run; null if absent/expired. */
+  downloadArtifact(repo: RepoRef, runId: number, name: string): Promise<Uint8Array | null>;
   getIssue(repo: RepoRef, n: number): Promise<IssueMeta>;
   /** GET /user — for "posting as @user". */
   currentLogin(): Promise<string>;
